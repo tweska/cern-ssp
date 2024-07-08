@@ -29,18 +29,15 @@
 #define CUDA_HELPERS_H
 
 #include <string>
+#include <iostream>
 #include <thrust/binary_search.h>
-
-// #include "TError.h"
 
 #define ERRCHECK(err) __checkCudaErrors((err), __func__, __FILE__, __LINE__)
 inline static void __checkCudaErrors(cudaError_t error, std::string func, std::string file, int line)
 {
    if (error != cudaSuccess) {
-   // todo fprintf
-
-      // Fatal((func + "(), " + file + ":" + std::to_string(line)).c_str(), "%s", cudaGetErrorString(error));
-      throw std::bad_alloc();
+      std::cerr << func << "(), " << file << ":" << std::to_string(line) << ", " << cudaGetErrorString(error) << std::endl;
+      exit(-1);
    }
 }
 

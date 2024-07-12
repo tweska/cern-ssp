@@ -1,8 +1,14 @@
-#include <iostream>
+#include <cmath>
+
 #include <numeric>
 #include <random>
 
+// ROOT
+#include "TH1.h"
+
 #include "RHnCUDA.h"
+
+#define MAX_ERROR  0.000000000001
 
 template <typename T>
 T arraySum(T a[], size_t n)
@@ -118,7 +124,44 @@ public:
 
     void checkResult()
     {
-        // TODO: Compare results against a simple CPU implementation.
+        // Comparing against existing ROOT Histogram implementation.
+        // This implementation is fixed 1D only, for the time being.
+
+        auto histoROOT = new TH1D(
+            "",              // Name
+            ";x;y",          // Title
+            h_nBinsAxis[0] - 2,
+            h_xMin[0],
+            h_xMax[0]
+        );
+
+        histoROOT->FillN(
+            bulkSize,
+            h_coords,
+            h_weights
+        );
+
+        const double *t_histogram = histoROOT->GetArray();
+
+        double maxError = 0.0;
+        for (size_t i = 0; i < h_nBinsAxis[0]; ++i) {
+            double error = fabsl((h_histogram[i] - t_histogram[i]) / t_histogram[i]);
+            if (error > maxError)
+                maxError = error;
+        }
+
+        if (maxError > MAX_ERROR) {
+            std::cerr << "Test failed! Relative maximum error is " << maxError << std::endl;
+        }
+    }
+
+    void fullTest()
+    {
+        allocateDevice();
+        transferDevice();
+        run();
+        transferResult();
+        checkResult();
     }
 };
 
@@ -127,7 +170,7 @@ public:
     Single1DFixedUniformHistogramTest(
         const int nBins = 102,
         const double xMinVal = 0.0,
-        const double xMaxVal = 100,
+        const double xMaxVal = 1.0,
         const size_t bulkSize = 1000
         ) : HistogramTest(
           new double[nBins],
@@ -157,11 +200,13 @@ public:
 
 int main(int argc, char **argv)
 {
-    auto test = Single1DFixedUniformHistogramTest();
-    test.allocateDevice();
-    test.transferDevice();
-    test.run();
-    test.transferResult();
+    auto test = Single1DFixedUniformHistogramTest(
+        10 + 2,  // nBins
+        0.0,     // xMin
+        1.0,     // xMax
+        5000000  // BulkSize
+    );
+    test.fullTest();
 
     return 0;
 }

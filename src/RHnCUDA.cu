@@ -1,7 +1,6 @@
-#ifndef RHnCUDA_H
-#define RHnCUDA_H
-
 #include "CUDAHelpers.cuh"
+
+#include "RHnCUDA.cuh"
 
 namespace ROOT {
 namespace Experimental {
@@ -216,6 +215,16 @@ __global__ void HistogramGlobal(T *histogram, double *binEdges, int *binEdgesIdx
    }
 }
 
+#define HISTOGRAM_GLOBAL(T, Dim) \
+   template __global__ void HistogramGlobal<T, Dim>(                                    \
+      double *histogram, double *binEdges, int *binEdgesIdx, int *nBinsAxis, double *xMin, \
+      double *xMax, double *coords, double *weights, bool *mask, size_t bulkSize           \
+   );
+
+HISTOGRAM_GLOBAL(double, 1)
+HISTOGRAM_GLOBAL(double, 2)
+HISTOGRAM_GLOBAL(double, 3)
+
 ///////////////////////////////////////////
 /// Statistics calculation kernels
 
@@ -236,4 +245,3 @@ __global__ void ExcludeUOverflowKernel(bool *mask, double *weights, size_t bulkS
 
 } // namespace Experimental
 } // namespace ROOT
-#endif

@@ -7,18 +7,20 @@ CUDA_INCLUDES = -Iinc $(ROOT_INCLUDES)
 CUDA_LIBS     = $(ROOT_LIBS)
 
 SOURCE_FILES  = $(wildcard src/*.cu)
-OBJECT_FILES  = $(patsubst %.cu, %.o, $(SOURCE_FILES))
+OBJECT_FILES  = $(patsubst src/%.cu, obj/%.o, $(SOURCE_FILES))
 
 
-all: main
+all: bin/main
 
-%.o: %.cu
+obj/%.o: src/%.cu
+	@ mkdir -p obj
 	$(CUDA_COMPILER) $(CUDA_FLAGS) $(CUDA_INCLUDES) -c $< -o $@
 
-main: $(OBJECT_FILES)
+bin/main: $(OBJECT_FILES)
+	@ mkdir -p bin
 	$(CUDA_COMPILER) $(CUDA_FLAGS) $(CUDA_INCLUDES) $(CUDA_LIBS) $^ -o $@
 
 clean:
-	rm -f main src/*.o
+	rm -rf bin/ obj/
 
 .PHONY: all clean

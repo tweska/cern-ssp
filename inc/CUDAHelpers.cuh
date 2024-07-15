@@ -50,13 +50,13 @@ namespace CUDAHelpers {
 // proxy function to initialize shared memory arrays of different types with different names.
 
 template <typename T>
-__device__ T *shared_memory_proxy()
+inline __device__ T *shared_memory_proxy()
 {
    // Fatal("template <typename T> __device__ T *shared_memory_proxy()", "Unsupported shared memory type");
    return (T *)0;
 };
 template <>
-__device__ double *shared_memory_proxy<double>()
+inline __device__ double *shared_memory_proxy<double>()
 {
    extern __shared__ double s_double[];
    return s_double;
@@ -67,7 +67,7 @@ __device__ double *shared_memory_proxy<double>()
 
 // CUDA version of TMath::BinarySearch
 template <typename T>
-__device__ long BinarySearch(long n, const T *array, T value)
+inline __device__ long BinarySearch(long n, const T *array, T value)
 {
    const T *pind;
 
@@ -82,7 +82,7 @@ __device__ long BinarySearch(long n, const T *array, T value)
 }
 
 // For debugging
-__global__ void PrintArray(double *array, int n)
+inline __global__ void PrintArray(double *array, int n)
 {
    for (int i = 0; i < n; i++) {
       printf("%f ", array[i]);

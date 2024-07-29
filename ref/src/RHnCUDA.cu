@@ -217,7 +217,7 @@ __global__ void HistogramGlobal(T *histogram, double *binEdges, int *binEdgesIdx
 
 #define HISTOGRAM_GLOBAL(T, Dim) \
    template __global__ void HistogramGlobal<T, Dim>(                                    \
-      double *histogram, double *binEdges, int *binEdgesIdx, int *nBinsAxis, double *xMin, \
+      T *histogram, double *binEdges, int *binEdgesIdx, int *nBinsAxis, double *xMin, \
       double *xMax, double *coords, double *weights, bool *mask, size_t bulkSize           \
    );
 

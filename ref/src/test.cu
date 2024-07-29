@@ -180,4 +180,3 @@ Single1DFixedUniformHistogramTest::Single1DFixedUniformHistogramTest(
         h_mask[i] = true;
     }
 }
-

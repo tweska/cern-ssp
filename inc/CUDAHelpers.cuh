@@ -81,15 +81,6 @@ inline __device__ long BinarySearch(long n, const T *array, T value)
    // return pind - array - !((pind != array + n) && (*pind == value)); // OPTIMIZATION: is this better?
 }
 
-// For debugging
-inline __global__ void PrintArray(double *array, int n)
-{
-   for (int i = 0; i < n; i++) {
-      printf("%f ", array[i]);
-   }
-   printf("\n");
-}
-
 } // namespace CUDAHelpers
 } // namespace Experimental
 } // namespace ROOT

@@ -21,12 +21,11 @@ T arrayProduct(T a[], size_t n)
 template <typename T>
 void printArray(T* array, usize n)
 {
+    std::cout << "[ ";
     for (usize i = 0; i < n; ++i) {
-        if (i > 0)
-            std::cout << " ";
-        std::cout << array[i];
+        std::cout << array[i] << " ";
     }
-    std::cout << std::endl;
+    std::cout << "]" << std::endl;
 }
 
 #endif //UTIL_H

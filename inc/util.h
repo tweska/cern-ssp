@@ -19,13 +19,13 @@ T arrayProduct(T a[], size_t n)
 }
 
 template <typename T>
-void printArray(T* array, usize n)
+void printArray(T* array, usize n, std::ostream &output = std::cout)
 {
-    std::cout << "[ ";
+    output << "[ ";
     for (usize i = 0; i < n; ++i) {
-        std::cout << array[i] << " ";
+        output << array[i] << " ";
     }
-    std::cout << "]" << std::endl;
+    output << "]" << std::endl;
 }
 
 #endif //UTIL_H

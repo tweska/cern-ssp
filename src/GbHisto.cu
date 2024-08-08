@@ -59,7 +59,7 @@ __global__ void HistogramGlobal(
 
         u32 bin = GetBin(
             i % bulkSize, nDims[h],
-            &binEdges[hoff], &binEdgesOffset[hoff], &nBinsAxis[hoff],
+            binEdges, &binEdgesOffset[hoff], &nBinsAxis[hoff],
             &xMin[hoff], &xMax[hoff],
             &coords[hoff * bulkSize], bulkSize
         );
@@ -84,7 +84,7 @@ GbHisto<T, BlockSize>::GbHisto(
     nBins = 0;
     nAxis = 0;
     h_histoResultOffset = new u32[nHistos];
-    u32 h_histoOffset[nHistos];
+    h_histoOffset = new u32[nHistos];
 
     usize i = 0;
     for (usize h = 0; h < nHistos; ++h) {

@@ -31,6 +31,7 @@ protected:
     // Offsets
     u32 *h_histoResultOffset;  ///< Start index of each histogram in histograms (len: nHistos)
     u32 *d_histoResultOffset;  ///< Start index of each histogram in histograms (len: nHistos)
+    u32 *h_histoOffset;        ///< Start index of each axis in  (len: nHistos)
     u32 *d_histoOffset;        ///< Start index of each axis in  (len: nHistos)
     i32 *d_binEdgesOffset;     ///< Start index of each binEdges for each axis (len: sum(nDims), index: axisOffset)
 

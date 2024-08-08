@@ -1,9 +1,8 @@
-
 #include <vector>
 #include <memory>
 #include <random>
 
-
+// Google Test
 #include <gtest/gtest.h>
 
 // Root Histogramming
@@ -34,10 +33,38 @@ public:
     void Fill(u32 n, const f64 *coords, const f64 *weights = nullptr) {
         GbHisto::Fill(n, coords, weights);
 
-        for (auto &hist : hROOT) {
-            if (auto h1d = dynamic_cast<TH1D*>(hist.get())) {
-                h1d->FillN(n, coords, weights);
+        for (usize i = 0; i < nHistos; ++i) {
+            const auto offset = h_histoOffset[i];
+            auto *weightsPtr = weights ? &weights[i * n] : nullptr;
+            const auto &histo = hROOT[i].get();
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Warray-bounds"
+            if (auto h1d = dynamic_cast<TH1D*>(histo)) {
+                h1d->FillN(
+                    n,
+                    &coords[offset * n],
+                    weightsPtr
+                );
+            } else if (auto h2d = dynamic_cast<TH2D*>(histo)) {
+                h2d->FillN(
+                    n,
+                    &coords[(offset + 0) * n],
+                    &coords[(offset + 1) * n],
+                    weightsPtr
+                );
+            } else if (auto h3d = dynamic_cast<TH3D*>(histo)) {
+                for (usize j = 0; j < n; j++) {
+                    h3d->Fill(
+                        coords[(offset + 0) * n + j],
+                        coords[(offset + 1) * n + j],
+                        coords[(offset + 2) * n + j],
+                        weightsPtr ? weightsPtr[j] : 1.0
+                    );
+                }
+            } else {
+                assert(0 == 1);
             }
+            #pragma GCC diagnostic pop
         }
     }
 
@@ -53,27 +80,68 @@ public:
         maxBulkSize
     ) {
         for (usize i = 0; i < nHistos; ++i) {
-            switch (nDims[i]) {
-                case 1:
-                    hROOT.emplace_back(std::make_unique<TH1D>(
-                        "", "",
-                        nBinsAxis[0] - 2,
-                        xMin[0], xMax[0]
-                    ));
-                    break;
-                default:
-                    assert(0 == 1);
+            u32 offset = h_histoOffset[i];
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Warray-bounds"
+            if (nDims[i] == 1) {
+                hROOT.emplace_back(std::make_unique<TH1D>(
+                    "", "",
+                    nBinsAxis[offset + 0] - 2, xMin[offset + 0], xMax[offset + 0]
+                ));
+            } else if (nDims[i] == 2) {
+                hROOT.emplace_back(std::make_unique<TH2D>(
+                    "", "",
+                    nBinsAxis[offset + 0] - 2, xMin[offset + 0], xMax[offset + 0],
+                    nBinsAxis[offset + 1] - 2, xMin[offset + 1], xMax[offset + 1]
+                ));
+            } else if(nDims[i] == 3) {
+                hROOT.emplace_back(std::make_unique<TH3D>(
+                    "", "",
+                    nBinsAxis[offset + 0] - 2, xMin[offset + 0], xMax[offset + 0],
+                    nBinsAxis[offset + 1] - 2, xMin[offset + 1], xMax[offset + 1],
+                    nBinsAxis[offset + 2] - 2, xMin[offset + 2], xMax[offset + 2]
+                ));
+            } else {
+                assert(0 == 1);
             }
+            #pragma GCC diagnostic pop
         }
     }
 
     b8 Check() {
+        f64 fullResult[nBins];
+        RetrieveResults(fullResult);
+
         for (usize i = 0; i < nHistos; ++i) {
+            f64 *result = &fullResult[h_histoResultOffset[i]];
             const auto &histo = hROOT[i].get();
             if (auto h1d = dynamic_cast<TH1D*>(histo)) {
                 const f64 *array = h1d->GetArray();
                 const usize nBins = h1d->GetNbinsX() + 2;
-                if (!checkArray(nBins, array, array)) return false;
+                if (!checkArray(nBins, result, array)) {
+                    std::cerr << "Error encountered in histo with id " << i << " (1D)." << std::endl;
+                    std::cout << "observed="; printArray(result, nBins);
+                    std::cout << "expected="; printArray(array, nBins);
+                    return false;
+                }
+            } else if (auto h2d = dynamic_cast<TH2D*>(histo)) {
+                const f64 *array = h2d->GetArray();
+                const usize nBins = (h2d->GetNbinsX() + 2) * (h2d->GetNbinsY() + 2);
+                if (!checkArray(nBins, result, array)) {
+                    std::cerr << "Error encountered in histo with id " << i << " (2D)." << std::endl;
+                    std::cout << "observed="; printArray(result, nBins);
+                    std::cout << "expected="; printArray(array, nBins);
+                    return false;
+                }
+            } else if (auto h3d = dynamic_cast<TH3D*>(histo)) {
+                const f64 *array = h3d->GetArray();
+                const usize nBins = (h3d->GetNbinsX() + 2) * (h3d->GetNbinsY() + 2) * (h3d->GetNbinsZ() + 2);
+                if (!checkArray(nBins, result, array)) {
+                    std::cerr << "Error encountered in histo with id " << i << " (3D)." << std::endl;
+                    std::cerr << "observed="; printArray(result, nBins, std::cerr);
+                    std::cerr << "expected="; printArray(array, nBins, std::cerr);
+                    return false;
+                }
             } else { return false; }
         }
         return true;
@@ -161,6 +229,42 @@ TEST(GbHistoDTest, DoubleUnequal1DRandom) {
     u32 nDims[2] = { 1,  1};
     u32 nBins[2] = {10, 15};
     ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+}
+
+TEST(GbHistoDTest, Single2DRandom) {
+    u32 nDims = 2;
+    u32 nBins[2] = {10, 10};
+    ASSERT_TRUE(runRandomTest(1, &nDims, nBins, 500));
+}
+
+TEST(GbHistoDTest, DoubleEqual2DRandom) {
+    u32 nDims[2] = {2,       2};
+    u32 nBins[4] = {10, 10, 10, 10};
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+}
+
+TEST(GbHistoDTest, DoubleUnequal2DRandom) {
+    u32 nDims[2] = {2,       2};
+    u32 nBins[4] = {10, 12, 17, 15};
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+}
+
+TEST(GbHistoDTest, DoubleUnequal1D2DRandom) {
+    u32 nDims[2] = {1,   2};
+    u32 nBins[3] = {10, 17, 15};
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+}
+
+TEST(GbHistoDTest, DoubleUnequal2D3DRandom) {
+    u32 nDims[2] = {2,       3};
+    u32 nBins[5] = {10, 17, 15, 12, 14};
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+}
+
+TEST(GbHistoDTest, DoubleUnequal2D3DRandomLarge) {
+    u32 nDims[2] = {2,       3};
+    u32 nBins[5] = {10, 17, 15, 12, 14};
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 5000000));
 }
 
 int main(int argc, char **argv) {

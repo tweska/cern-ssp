@@ -1,10 +1,17 @@
+#include <chrono>
 #include <iostream>
+#include <iomanip>
 
 #include "CUDAHelpers.cuh"
 #include "util.h"
 #include "types.h"
 
 #include "GbHisto.h"
+
+using std::chrono::high_resolution_clock;
+using std::chrono::duration_cast;
+using std::chrono::duration;
+using std::chrono::milliseconds;
 
 /// @brief Increase a bin in the histogram by a certain weight.
 template <typename T>
@@ -78,6 +85,8 @@ GbHisto<T, BlockSize>::GbHisto(
     const f64 *binEdges, const i32 *binEdgesOffset,
     usize maxBulkSize
 ) {
+    auto t0 = high_resolution_clock::now();
+
     this->nHistos = nHistos;
     this->maxBulkSize = maxBulkSize;
 
@@ -128,6 +137,10 @@ GbHisto<T, BlockSize>::GbHisto(
     ERRCHECK(cudaMemcpy(d_histoOffset, h_histoOffset, sizeof(u32) * nHistos, cudaMemcpyHostToDevice));
     ERRCHECK(cudaMemcpy(d_binEdgesOffset, binEdgesOffset, sizeof(i32) * nAxis, cudaMemcpyHostToDevice));
     cudaDeviceSynchronize();
+
+    auto t1 = high_resolution_clock::now();
+    duration<double, std::milli> runtimeMs = t1 - t0;
+    runtimeInit = runtimeMs.count();
 }
 
 template<typename T, u32 BlockSize>
@@ -147,8 +160,32 @@ GbHisto<T, BlockSize>::~GbHisto() {
 
 template <typename T, u32 BlockSize>
 void GbHisto<T, BlockSize>::RetrieveResults(T *histograms, f64 *stats) {
+    auto t0 = high_resolution_clock::now();
+
     ERRCHECK(cudaMemcpy(histograms, d_histograms, sizeof(T) * nBins, cudaMemcpyDeviceToHost));
     ERRCHECK(cudaDeviceSynchronize());
+
+    auto t1 = high_resolution_clock::now();
+    duration<double, std::milli> runtimeMs = t1 - t0;
+    runtimeResult = runtimeMs.count();
+}
+
+template <typename T, u32 BlockSize>
+void GbHisto<T, BlockSize>::GetRuntime(f64 *runtimeInit, f64 *runtimeTransfer, f64 *runtimeKernel, f64 *runtimeResult) {
+    *runtimeInit = this->runtimeInit;
+    *runtimeTransfer = this->runtimeTransfer;
+    *runtimeKernel = this->runtimeKernel;
+    *runtimeResult = this->runtimeResult;
+}
+
+template <typename T, u32 BlockSize>
+void GbHisto<T, BlockSize>::PrintRuntime(std::ostream &output) {
+    output << "runtimeInit     = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeInit << std::endl;
+    output << "runtimeTransfer = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeTransfer << std::endl;
+    output << "runtimeKernel   = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeKernel << std::endl;
+    output << "runtimeResult   = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeResult << std::endl;
+    output << "runtimeFill     = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeTransfer + runtimeKernel << "  (coords + kernel)" << std::endl;
+    output << "runtimeTotal    = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeInit + runtimeTransfer + runtimeKernel + runtimeResult << "  (init + coords + kernel + result)" << std::endl;
 }
 
 template<typename T, u32 BlockSize>
@@ -160,6 +197,8 @@ template<typename T, u32 BlockSize>
 void GbHisto<T, BlockSize>::Fill(u32 n, const f64 *coords, const f64 *weights) {
     assert(n <= maxBulkSize);  // TODO: Split the bulk if the maxBulkSize is exceeded!
 
+    auto t0 = high_resolution_clock::now();
+
     ERRCHECK(cudaMemcpy(d_coords, coords, sizeof(f64) * nAxis * n, cudaMemcpyHostToDevice));
 
     f64 *weightsPtr = nullptr;
@@ -167,6 +206,8 @@ void GbHisto<T, BlockSize>::Fill(u32 n, const f64 *coords, const f64 *weights) {
         ERRCHECK(cudaMemcpy(d_weights, weights, sizeof(f64) * n, cudaMemcpyHostToDevice));
         weightsPtr = d_weights;
     }
+
+    auto t1 = high_resolution_clock::now();
 
     usize nThreads = nHistos * n;
     usize nBlocks = nThreads / BlockSize + (nThreads % BlockSize != 0);
@@ -178,6 +219,12 @@ void GbHisto<T, BlockSize>::Fill(u32 n, const f64 *coords, const f64 *weights) {
         d_coords, weightsPtr, n
     );
     ERRCHECK(cudaPeekAtLastError());
+
+    auto t2 = high_resolution_clock::now();
+    duration<double, std::milli> runtimeMsCoords = t1 - t0;
+    duration<double, std::milli> runtimeMsKernel = t2 - t1;
+    runtimeTransfer += runtimeMsCoords.count();
+    runtimeKernel += runtimeMsKernel.count();
 }
 
 

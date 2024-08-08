@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 #include <memory>
 #include <random>
@@ -144,6 +145,7 @@ public:
                 }
             } else { return false; }
         }
+        PrintRuntime();
         return true;
     }
 

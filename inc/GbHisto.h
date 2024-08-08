@@ -41,6 +41,11 @@ protected:
 
     usize  maxBulkSize;        ///< Maximum size of bulk to process at once
 
+    f64 runtimeInit     = 0.0;
+    f64 runtimeTransfer = 0.0;
+    f64 runtimeKernel   = 0.0;
+    f64 runtimeResult   = 0.0;
+
 public:
     GbHisto() = delete;
     GbHisto(
@@ -68,6 +73,8 @@ public:
     GbHisto &operator=(const GbHisto &) = delete;
 
     void RetrieveResults(T *histogram, f64 *stats = nullptr);
+    void GetRuntime(f64 *runtimeInit, f64 *runtimeTransfer, f64 *runtimeKernel, f64 *runtimeResult);
+    void PrintRuntime(std::ostream &output = std::cout);
     void Fill(u32 n, const f64 *coords);
     void Fill(u32 n, const f64 *coords, const f64 *weights);
 };

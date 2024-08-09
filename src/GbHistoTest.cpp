@@ -157,19 +157,29 @@ public:
         return Check();
     }
 
-    b8 FullRandomTest(usize nValues, usize bulkSize = 256) {
+    b8 FullRandomTest(usize nValues, bool genWeight = true, usize bulkSize = 256) {
         auto *coords = new f64[bulkSize * nAxis];
+        f64 *weight = nullptr;
+        if (genWeight) {
+            weight = new f64[bulkSize * nHistos];;
+        }
 
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<> coords_dis(-10.0, 110.0);
+        std::uniform_real_distribution<> weight_dis(0.0, 1.0);
 
         for (usize i = 0; i < nValues; i += bulkSize) {
             const usize n = min(nValues - i, bulkSize);
-            for (usize j = 0; j < n; ++j) {
+            for (usize j = 0; j < n * nAxis; ++j) {
                 coords[j] = coords_dis(gen);
             }
-            Fill(n, coords);
+            if (genWeight) {
+                for (usize j = 0; j < n * nHistos; ++j) {
+                    weight[j] = weight_dis(gen);
+                }
+            }
+            Fill(n, coords, weight);
         }
 
         std::destroy_at(coords);
@@ -177,7 +187,7 @@ public:
     }
 };
 
-b8 runRandomTest(u32 nHistos, u32 *nDims, u32 *nBinsAxis, u32 nValues = 100) {
+b8 runRandomTest(u32 nHistos, u32 *nDims, u32 *nBinsAxis, u32 nValues = 100, bool genWeights = true) {
     u32 nAxis = 0;
     for (u32 i = 0; i < nHistos; ++i) {
         nAxis += nDims[i];
@@ -195,7 +205,7 @@ b8 runRandomTest(u32 nHistos, u32 *nDims, u32 *nBinsAxis, u32 nValues = 100) {
     std::destroy_at(xMax);
     std::destroy_at(binEdgesOffset);
 
-    return test.FullRandomTest(nValues);
+    return test.FullRandomTest(nValues, genWeights);
 }
 
 TEST(GbHistoDTest, Single1DSmall) {
@@ -218,55 +228,64 @@ TEST(GbHistoDTest, Single1DSmall) {
 TEST(GbHistoDTest, Single1DRandom) {
     u32 nDims = 1;
     u32 nBins = 10;
-    ASSERT_TRUE(runRandomTest(1, &nDims, &nBins, 500));
+    ASSERT_TRUE(runRandomTest(1, &nDims, &nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(1, &nDims, &nBins, 500, true));
 }
 
 TEST(GbHistoDTest, DoubleEqual1DRandom) {
     u32 nDims[2] = { 1,  1};
     u32 nBins[2] = {10, 10};
-    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, true));
 }
 
 TEST(GbHistoDTest, DoubleUnequal1DRandom) {
     u32 nDims[2] = { 1,  1};
     u32 nBins[2] = {10, 15};
-    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, true));
 }
 
 TEST(GbHistoDTest, Single2DRandom) {
     u32 nDims = 2;
     u32 nBins[2] = {10, 10};
-    ASSERT_TRUE(runRandomTest(1, &nDims, nBins, 500));
+    ASSERT_TRUE(runRandomTest(1, &nDims, nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(1, &nDims, nBins, 500, true));
 }
 
 TEST(GbHistoDTest, DoubleEqual2DRandom) {
     u32 nDims[2] = {2,       2};
     u32 nBins[4] = {10, 10, 10, 10};
-    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, true));
 }
 
 TEST(GbHistoDTest, DoubleUnequal2DRandom) {
     u32 nDims[2] = {2,       2};
     u32 nBins[4] = {10, 12, 17, 15};
-    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, true));
 }
 
 TEST(GbHistoDTest, DoubleUnequal1D2DRandom) {
     u32 nDims[2] = {1,   2};
     u32 nBins[3] = {10, 17, 15};
-    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, true));
 }
 
 TEST(GbHistoDTest, DoubleUnequal2D3DRandom) {
     u32 nDims[2] = {2,       3};
     u32 nBins[5] = {10, 17, 15, 12, 14};
-    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, false));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 500, true));
 }
 
 TEST(GbHistoDTest, DoubleUnequal2D3DRandomLarge) {
     u32 nDims[2] = {2,       3};
     u32 nBins[5] = {10, 17, 15, 12, 14};
-    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 5000000));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 5000000, false));
+    ASSERT_TRUE(runRandomTest(2, nDims, nBins, 5000000, true));
 }
 
 int main(int argc, char **argv) {

@@ -203,7 +203,7 @@ void GbHisto<T, BlockSize>::Fill(u32 n, const f64 *coords, const f64 *weights) {
 
     f64 *weightsPtr = nullptr;
     if (weights) {
-        ERRCHECK(cudaMemcpy(d_weights, weights, sizeof(f64) * n, cudaMemcpyHostToDevice));
+        ERRCHECK(cudaMemcpy(d_weights, weights, sizeof(f64) * n * nHistos, cudaMemcpyHostToDevice));
         weightsPtr = d_weights;
     }
 

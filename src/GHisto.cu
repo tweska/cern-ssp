@@ -6,49 +6,49 @@
 
 /// @brief Increase a bin in the histogram by a certain weight.
 template <typename T>
-__device__ inline void AddBinContent(T *histogram, u32 bin, f64 weight) {
+__device__ inline void AddBinContent(T *histogram, usize bin, f64 weight) {
     atomicAdd(&histogram[bin], (T)weight);
 }
 
 /// @brief Find the corresponding bin in a histogram axis based on a given x value.
-__device__ inline u32 FindBin(f64 x, const f64 *binEdges, i32 binEdgesIdx, u32 nBins, f64 xMin, f64 xMax) {
+__device__ inline usize FindBin(f64 x, const f64 *binEdges, isize binEdgesIdx, usize nBins, f64 xMin, f64 xMax) {
     if (x < xMin)
         return 0;
     if (!(x < xMax))
         return nBins + 1;
 
     if (binEdgesIdx < 0)
-        return 1 + u32(nBins * (x - xMin) / (xMax - xMin));
+        return 1 + usize(nBins * (x - xMin) / (xMax - xMin));
     return 1 + ROOT::Experimental::CUDAHelpers::BinarySearch(nBins + 1, &binEdges[binEdgesIdx], x);
 }
 
 /// @brief Calculate the corresponding bin for a value in an n-Dimensional histogram.
-template<u32 Dim>
-__device__ inline u32 GetBin(
-    u32 i,
-    f64 *binEdges, i32 *binEdgesIdx, u32 *nBinsAxis,
+template<usize Dim>
+__device__ inline usize GetBin(
+    usize i,
+    f64 *binEdges, isize *binEdgesIdx, usize *nBinsAxis,
     f64 *xMin, f64 *xMax,
     f64 *coords, usize bulkSize
 ) {
-    u32 bin = 0;
+    usize bin = 0;
     for (int d = Dim - 1; d >= 0; --d) {
         f64 *x = &coords[d * bulkSize];
-        u32 binD = FindBin(x[i], binEdges, binEdgesIdx[d], nBinsAxis[d] - 2, xMin[d], xMax[d]);
+        usize binD = FindBin(x[i], binEdges, binEdgesIdx[d], nBinsAxis[d] - 2, xMin[d], xMax[d]);
         bin = bin * nBinsAxis[d] + binD;
     }
     return bin;
 }
 
 /// @brief CUDA kernel to fill the histogram using global memory.
-template <typename T, u32 Dim>
+template <typename T, usize Dim>
 __global__ void HistogramGlobal(
     T* histogram,
-    f64 *binEdges, i32 *binEdgesIdx, u32 *nBinsAxis,
+    f64 *binEdges, isize *binEdgesIdx, usize *nBinsAxis,
     f64 *xMin, f64 *xMax,
     f64 *coords, f64 *weights, usize bulkSize
 ) {
-    u32 tid = threadIdx.x + blockDim.x * blockIdx.x;
-    u32 stride = blockDim.x * gridDim.x;
+    usize tid = threadIdx.x + blockDim.x * blockIdx.x;
+    usize stride = blockDim.x * gridDim.x;
 
     for (auto i = tid; i < bulkSize; i += stride) {
         auto bin = GetBin<Dim>(i, binEdges, binEdgesIdx, nBinsAxis, xMin, xMax, coords, bulkSize);
@@ -59,18 +59,18 @@ __global__ void HistogramGlobal(
     }
 }
 
-template <typename T, u32 Dim, u32 BlockSize>
+template <typename T, usize Dim, usize BlockSize>
 GHisto<T, Dim, BlockSize>::GHisto(
-    const u32 *nBinsAxis,
+    const usize *nBinsAxis,
     const f64 *xMin, const f64 *xMax,
-    const f64 *binEdges, const i32 *binEdgesIdx,
+    const f64 *binEdges, const isize *binEdgesIdx,
     usize maxBulkSize
 ) {
     nBins = arrayProduct(nBinsAxis, Dim);
     this->maxBulkSize = maxBulkSize;
 
     ERRCHECK(cudaMalloc(&d_histogram, sizeof(T) * nBins));
-    ERRCHECK(cudaMalloc(&d_nBinsAxis, sizeof(u32) * Dim));
+    ERRCHECK(cudaMalloc(&d_nBinsAxis, sizeof(usize) * Dim));
     ERRCHECK(cudaMalloc(&d_xMin, sizeof(f64) * Dim));
     ERRCHECK(cudaMalloc(&d_xMax, sizeof(f64) * Dim));
     if (binEdges) {
@@ -78,21 +78,21 @@ GHisto<T, Dim, BlockSize>::GHisto(
     } else {
         d_binEdges = nullptr;
     }
-    ERRCHECK(cudaMalloc(&d_binEdgesIdx, sizeof(i32) * Dim));
+    ERRCHECK(cudaMalloc(&d_binEdgesIdx, sizeof(isize) * Dim));
     ERRCHECK(cudaMalloc(&d_coords, sizeof(f64) * Dim * maxBulkSize));
     ERRCHECK(cudaMalloc(&d_weights, sizeof(f64) * Dim * maxBulkSize));
 
     ERRCHECK(cudaMemset(d_histogram, 0, sizeof(T) * nBins));
-    ERRCHECK(cudaMemcpy(d_nBinsAxis, nBinsAxis, sizeof(u32) * Dim, cudaMemcpyHostToDevice));
+    ERRCHECK(cudaMemcpy(d_nBinsAxis, nBinsAxis, sizeof(usize) * Dim, cudaMemcpyHostToDevice));
     ERRCHECK(cudaMemcpy(d_xMin, xMin, sizeof(f64) * Dim, cudaMemcpyHostToDevice));
     ERRCHECK(cudaMemcpy(d_xMax, xMax, sizeof(f64) * Dim, cudaMemcpyHostToDevice));
     if (d_binEdges) {
         ERRCHECK(cudaMemcpy(d_binEdges, binEdges, sizeof(f64) * arraySum(nBinsAxis, Dim), cudaMemcpyHostToDevice));
     }
-    ERRCHECK(cudaMemcpy(d_binEdgesIdx, binEdgesIdx, sizeof(i32) * Dim, cudaMemcpyHostToDevice));
+    ERRCHECK(cudaMemcpy(d_binEdgesIdx, binEdgesIdx, sizeof(isize) * Dim, cudaMemcpyHostToDevice));
 }
 
-template <typename T, u32 Dim, u32 BlockSize>
+template <typename T, usize Dim, usize BlockSize>
 GHisto<T, Dim, BlockSize>::~GHisto() {
     ERRCHECK(cudaFree(d_histogram));
     ERRCHECK(cudaFree(d_nBinsAxis));
@@ -104,13 +104,13 @@ GHisto<T, Dim, BlockSize>::~GHisto() {
     ERRCHECK(cudaFree(d_weights));
 }
 
-template <typename T, u32 Dim, u32 BlockSize>
+template <typename T, usize Dim, usize BlockSize>
 void GHisto<T, Dim, BlockSize>::RetrieveResults(T *histogram, f64 *stats) {
     ERRCHECK(cudaMemcpy(histogram, d_histogram, sizeof(T) * nBins, cudaMemcpyDeviceToHost));
 }
 
-template <typename T, u32 Dim, u32 BlockSize>
-void GHisto<T, Dim, BlockSize>::Fill(u32 n, const f64 *coords) {
+template <typename T, usize Dim, usize BlockSize>
+void GHisto<T, Dim, BlockSize>::Fill(usize n, const f64 *coords) {
     if (n > maxBulkSize) {
         Fill(maxBulkSize, coords);
         Fill(n - maxBulkSize, coords + maxBulkSize);
@@ -129,8 +129,8 @@ void GHisto<T, Dim, BlockSize>::Fill(u32 n, const f64 *coords) {
     ERRCHECK(cudaPeekAtLastError());
 }
 
-template <typename T, u32 Dim, u32 BlockSize>
-void GHisto<T, Dim, BlockSize>::Fill(u32 n, const f64 *coords, const f64 *weights) {
+template <typename T, usize Dim, usize BlockSize>
+void GHisto<T, Dim, BlockSize>::Fill(usize n, const f64 *coords, const f64 *weights) {
     if (n > maxBulkSize) {
         Fill(maxBulkSize, coords, weights);
         Fill(n - maxBulkSize, coords + maxBulkSize, weights + maxBulkSize);
@@ -150,6 +150,6 @@ void GHisto<T, Dim, BlockSize>::Fill(u32 n, const f64 *coords, const f64 *weight
     ERRCHECK(cudaPeekAtLastError());
 }
 
-template class GHisto<double, 1>;
-template class GHisto<double, 2>;
-template class GHisto<double, 3>;
+template class GHisto<f64, 1>;
+template class GHisto<f64, 2>;
+template class GHisto<f64, 3>;

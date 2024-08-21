@@ -31,7 +31,7 @@ __device__ inline usize GetBin(
     f64 *coords, usize bulkSize
 ) {
     usize bin = 0;
-    for (int d = Dim - 1; d >= 0; --d) {
+    for (isize d = Dim - 1; d >= 0; --d) {
         f64 *x = &coords[d * bulkSize];
         usize binD = FindBin(x[i], binEdges, binEdgesIdx[d], nBinsAxis[d] - 2, xMin[d], xMax[d]);
         bin = bin * nBinsAxis[d] + binD;
@@ -80,7 +80,7 @@ GHisto<T, Dim, BlockSize>::GHisto(
     }
     ERRCHECK(cudaMalloc(&d_binEdgesIdx, sizeof(isize) * Dim));
     ERRCHECK(cudaMalloc(&d_coords, sizeof(f64) * Dim * maxBulkSize));
-    ERRCHECK(cudaMalloc(&d_weights, sizeof(f64) * Dim * maxBulkSize));
+    ERRCHECK(cudaMalloc(&d_weights, sizeof(f64) * maxBulkSize));
 
     ERRCHECK(cudaMemset(d_histogram, 0, sizeof(T) * nBins));
     ERRCHECK(cudaMemcpy(d_nBinsAxis, nBinsAxis, sizeof(usize) * Dim, cudaMemcpyHostToDevice));
@@ -105,7 +105,7 @@ GHisto<T, Dim, BlockSize>::~GHisto() {
 }
 
 template <typename T, usize Dim, usize BlockSize>
-void GHisto<T, Dim, BlockSize>::RetrieveResults(T *histogram, f64 *stats) {
+void GHisto<T, Dim, BlockSize>::RetrieveResults(T *histogram) {
     ERRCHECK(cudaMemcpy(histogram, d_histogram, sizeof(T) * nBins, cudaMemcpyDeviceToHost));
 }
 
@@ -137,15 +137,20 @@ void GHisto<T, Dim, BlockSize>::Fill(usize n, const f64 *coords, const f64 *weig
         return;
     }
 
-    ERRCHECK(cudaMemcpy(d_coords, coords, sizeof(f64) * n, cudaMemcpyHostToDevice));
-    ERRCHECK(cudaMemcpy(d_weights, weights, sizeof(f64) * n, cudaMemcpyHostToDevice));
+    ERRCHECK(cudaMemcpy(d_coords, coords, sizeof(f64) * Dim * n, cudaMemcpyHostToDevice));
+
+    f64 *weightsPtr = nullptr;
+    if (weights) {
+        ERRCHECK(cudaMemcpy(d_weights, weights, sizeof(f64) * n, cudaMemcpyHostToDevice));
+        weightsPtr = d_weights;
+    }
 
     usize numBlocks = n % BlockSize == 0 ? n / BlockSize : n / BlockSize + 1;
     HistogramGlobal<T, Dim><<<numBlocks, BlockSize>>>(
         d_histogram,
         d_binEdges, d_binEdgesIdx, d_nBinsAxis,
         d_xMin, d_xMax,
-        d_coords, d_weights, n
+        d_coords, weightsPtr, n
     );
     ERRCHECK(cudaPeekAtLastError());
 }

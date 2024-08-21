@@ -3,13 +3,15 @@
 
 #include "types.h"
 
+using namespace std;
+
 /// @brief CUDA histogramming class
 /// @tparam T Histogram data type
 /// @tparam Dim Dimensionality of the histogram
 /// @tparam BlockSize Cuda block size to use in the kernels
 template <typename T, usize Dim, usize BlockSize = 256>
 class GHisto {
-private:
+protected:
     T     *d_histogram;   ///< Histogram buffer
     usize    nBins;       ///< Total number of bins in the histogram (with under/overflow)
 
@@ -37,7 +39,7 @@ public:
     GHisto(const GHisto &) = delete;
     GHisto &operator=(const GHisto &) = delete;
 
-    void RetrieveResults(T *histogram, f64 *stats);
+    void RetrieveResults(T *histogram);
     void Fill(usize n, const f64 *coords);
     void Fill(usize n, const f64 *coords, const f64 *weights);
 };

@@ -19,6 +19,14 @@ T arrayProduct(T a[], size_t n)
 }
 
 template <typename T>
+b8 checkArray(const usize n, const T *observed, const T *expected, const f64 maxError = 0.000000000001) {
+    for (usize i = 0; i < n; ++i)
+        if (fabsl((observed[i] - expected[i]) / expected[i]) > maxError)
+            return false;
+    return true;
+}
+
+template <typename T>
 void printArray(T* array, usize n, std::ostream &output = std::cout)
 {
     output << "[ ";

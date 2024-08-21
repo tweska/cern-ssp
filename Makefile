@@ -1,42 +1,34 @@
-ROOT_CPP_FLAGS = $(shell root-config --cflags --libs)
-ROOT_NVCC_FLAGS = -I$(shell root-config --incdir) -Xlinker -rpath -Xlinker $(shell root-config --libdir) -L$(shell root-config --libdir) -lCore -lHist
+ROOT_FLAGS      = $(shell root-config --cflags)
+ROOT_LIBS       = $(shell root-config --libs)
 
+CPP_COMPILER    = g++
+CPP_FLAGS       = -O3 -g -Wall -Werror -Iinc $(ROOT_FLAGS)
+CPP_LIBS        = $(ROOT_LIBS)
 
-CPP_COMPILER  = g++
-CPP_FLAGS     = -O3 -g -Wall -Werror -Iinc $(ROOT_CPP_FLAGS)
+CUDA_COMPILER   = nvcc
+CUDA_FLAGS      = -arch=sm_75 -g -G -Iinc
+CUDA_LIBS       = -lcuda -lcudart
 
-CUDA_COMPILER = nvcc
-CUDA_FLAGS    = -arch=sm_75 -g -G -Iinc $(ROOT_NVCC_FLAGS)
+TEST_LIBS       = -lgtest -lgtest_main
 
-TEST_LIBS     = -lgtest -lgtest_main
+SOURCE_FILES    = $(wildcard src/*.cpp) $(wildcard src/*.cu)
+OBJECT_FILES    = $(patsubst src/%.cpp, obj/%.cpp.o, $(patsubst src/%.cu, obj/%.cu.o, $(SOURCE_FILES)))
 
-SOURCE_FILES  = $(wildcard src/*.cpp) $(wildcard src/*.cu)
-OBJECT_FILES  = $(patsubst src/%.cpp, obj/%.cpp.o, $(patsubst src/%.cu, obj/%.cu.o, $(SOURCE_FILES)))
-
-EXPERIMENT_SOURCE_FILES = $(wildcard experiment/*.cpp) $(wildcard experiment/*.cu)
-EXPERIMENT_TARGET_FILES = $(patsubst %.cpp, %, $(patsubst %.cu, %, $(EXPERIMENT_SOURCE_FILES)))
-
-all: bin/test $(EXPERIMENT_TARGET_FILES)
+all: bin/test
 
 obj/%.cpp.o: src/%.cpp
 	@ mkdir -p obj
-	$(CPP_COMPILER) $(CPP_FLAGS) -c $< -o $@
+	$(CPP_COMPILER) -c $< -o $@ $(CPP_FLAGS)
 
 obj/%.cu.o: src/%.cu
 	@ mkdir -p obj
-	$(CUDA_COMPILER) $(CUDA_FLAGS) -c $< -o $@
+	$(CUDA_COMPILER) -c $< -o $@ $(CUDA_FLAGS)
 
 bin/test: $(OBJECT_FILES)
 	@ mkdir -p bin
-	$(CUDA_COMPILER) -o $@ $^ $(CUDA_FLAGS) $(TEST_LIBS)
-
-experiment/%: experiment/%.cpp
-	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS)
-
-experiment/%: experiment/%.cu
-	$(CUDA_COMPILER) -o $@ $^ $(CUDA_FLAGS)
+	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS) $(TEST_LIBS)
 
 clean:
-	rm -rf bin/ obj/ $(EXPERIMENT_TARGET_FILES)
+	rm -rf bin/ obj/
 
 .PHONY: all clean

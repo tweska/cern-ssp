@@ -16,8 +16,6 @@
 #include "types.h"
 #include "GbHisto.h"
 
-#define MIN
-
 b8 checkArray(const usize n, const f64 *o, const f64 *t, const f64 maxError = 0.000000000001) {
     for (usize i = 0; i < n; ++i)
         if (fabsl((o[i] - t[i]) / t[i]) > maxError)
@@ -30,41 +28,6 @@ public:
     using GbHisto::GbHisto;
 
     std::vector<std::unique_ptr<TH1>> hROOT;
-
-    void Fill(usize n, const f64 *coords, const f64 *weights = nullptr) {
-        GbHisto::Fill(n, coords, weights);
-
-        for (usize i = 0; i < nHistos; ++i) {
-            const auto offset = h_histoOffset[i];
-            auto *weightsPtr = weights ? &weights[i * n] : nullptr;
-            const auto &histo = hROOT[i].get();
-            if (auto h1d = dynamic_cast<TH1D*>(histo)) {
-                h1d->FillN(
-                    n,
-                    &coords[offset * n],
-                    weightsPtr
-                );
-            } else if (auto h2d = dynamic_cast<TH2D*>(histo)) {
-                h2d->FillN(
-                    n,
-                    &coords[(offset + 0) * n],
-                    &coords[(offset + 1) * n],
-                    weightsPtr
-                );
-            } else if (auto h3d = dynamic_cast<TH3D*>(histo)) {
-                for (usize j = 0; j < n; j++) {
-                    h3d->Fill(
-                        coords[(offset + 0) * n + j],
-                        coords[(offset + 1) * n + j],
-                        coords[(offset + 2) * n + j],
-                        weightsPtr ? weightsPtr[j] : 1.0
-                    );
-                }
-            } else {
-                throw std::logic_error("Histogram test with more than 3 dimensions is not implemented!");
-            }
-        }
-    }
 
     GbHistoTest(
         usize nHistos, const usize *nDims, const usize *nBinsAxis,
@@ -97,6 +60,41 @@ public:
                     nBinsAxis[offset + 1] - 2, xMin[offset + 1], xMax[offset + 1],
                     nBinsAxis[offset + 2] - 2, xMin[offset + 2], xMax[offset + 2]
                 ));
+            } else {
+                throw std::logic_error("Histogram test with more than 3 dimensions is not implemented!");
+            }
+        }
+    }
+
+    void Fill(usize n, const f64 *coords, const f64 *weights = nullptr) {
+        GbHisto::Fill(n, coords, weights);
+
+        for (usize i = 0; i < nHistos; ++i) {
+            const auto offset = h_histoOffset[i];
+            auto *weightsPtr = weights ? &weights[i * n] : nullptr;
+            const auto &histo = hROOT[i].get();
+            if (auto h1d = dynamic_cast<TH1D*>(histo)) {
+                h1d->FillN(
+                    n,
+                    &coords[offset * n],
+                    weightsPtr
+                );
+            } else if (auto h2d = dynamic_cast<TH2D*>(histo)) {
+                h2d->FillN(
+                    n,
+                    &coords[(offset + 0) * n],
+                    &coords[(offset + 1) * n],
+                    weightsPtr
+                );
+            } else if (auto h3d = dynamic_cast<TH3D*>(histo)) {
+                for (usize j = 0; j < n; j++) {
+                    h3d->Fill(
+                        coords[(offset + 0) * n + j],
+                        coords[(offset + 1) * n + j],
+                        coords[(offset + 2) * n + j],
+                        weightsPtr ? weightsPtr[j] : 1.0
+                    );
+                }
             } else {
                 throw std::logic_error("Histogram test with more than 3 dimensions is not implemented!");
             }
@@ -297,9 +295,4 @@ TEST(GbHistoDTest, FillOverflow) {
         5
     );
     ASSERT_TRUE(histos.FullRandomTest(500, true, 256));
-}
-
-int main(int argc, char **argv) {
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }

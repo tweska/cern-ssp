@@ -40,8 +40,7 @@ public:
     GHisto &operator=(const GHisto &) = delete;
 
     void RetrieveResults(T *histogram);
-    void Fill(usize n, const f64 *coords);
-    void Fill(usize n, const f64 *coords, const f64 *weights);
+    void FillN(usize n, const f64 *coords, const f64 *weights = nullptr);
 };
 
 #endif //GHISTO_H

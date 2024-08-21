@@ -75,8 +75,7 @@ public:
     void RetrieveResults(T *histogram, f64 *stats = nullptr);
     void GetRuntime(f64 *runtimeInit, f64 *runtimeTransfer, f64 *runtimeKernel, f64 *runtimeResult);
     void PrintRuntime(std::ostream &output = std::cout);
-    void Fill(usize n, const f64 *coords);
-    void Fill(usize n, const f64 *coords, const f64 *weights);
+    void FillN(usize n, const f64 *coords, const f64 *weights = nullptr);
 };
 
 #endif //GBHISTO_H

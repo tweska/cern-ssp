@@ -189,15 +189,13 @@ void GbHisto<T, BlockSize>::PrintRuntime(std::ostream &output) {
 }
 
 template<typename T, usize BlockSize>
-void GbHisto<T, BlockSize>::Fill(usize n, const f64 *coords) {
-    Fill(n, coords, nullptr);
-}
-
-template<typename T, usize BlockSize>
-void GbHisto<T, BlockSize>::Fill(usize n, const f64 *coords, const f64 *weights) {
+void GbHisto<T, BlockSize>::FillN(usize n, const f64 *coords, const f64 *weights) {
     if (n > maxBulkSize) {
-        Fill(maxBulkSize, coords, weights);
-        Fill(n - maxBulkSize, coords + maxBulkSize, weights + maxBulkSize);
+        FillN(maxBulkSize, coords, weights);
+        if (weights)
+            FillN(n - maxBulkSize, coords + maxBulkSize, weights + maxBulkSize);
+        else
+            FillN(n - maxBulkSize, coords + maxBulkSize, nullptr);
         return;
     }
 

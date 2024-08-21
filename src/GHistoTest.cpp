@@ -59,8 +59,8 @@ public:
         }
     }
 
-    void Fill(usize n, const f64 *coords, const f64 *weights = nullptr) {
-        GHisto<f64, Dim, BlockSize>::Fill(n, coords, weights);
+    void FillN(usize n, const f64 *coords, const f64 *weights = nullptr) {
+        GHisto<f64, Dim, BlockSize>::FillN(n, coords, weights);
 
         const auto &histo = hROOT.get();
         if (auto h1d = dynamic_cast<TH1D*>(histo)) {
@@ -130,7 +130,7 @@ public:
     b8 FullTest(usize nValues, const f64 *coords, usize bulkSize=256) {
         for (usize i = 0; i < nValues; i += bulkSize) {
             const usize n = min(nValues - i, bulkSize);
-            Fill(n, coords);
+            FillN(n, coords);
         }
         return Check();
     }
@@ -157,7 +157,7 @@ public:
                     weight[j] = weight_dis(gen);
                 }
             }
-            Fill(n, coords, weight);
+            FillN(n, coords, weight);
         }
 
         delete[] coords;

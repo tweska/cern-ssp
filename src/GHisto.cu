@@ -110,30 +110,13 @@ void GHisto<T, Dim, BlockSize>::RetrieveResults(T *histogram) {
 }
 
 template <typename T, usize Dim, usize BlockSize>
-void GHisto<T, Dim, BlockSize>::Fill(usize n, const f64 *coords) {
+void GHisto<T, Dim, BlockSize>::FillN(usize n, const f64 *coords, const f64 *weights) {
     if (n > maxBulkSize) {
-        Fill(maxBulkSize, coords);
-        Fill(n - maxBulkSize, coords + maxBulkSize);
-        return;
-    }
-
-    ERRCHECK(cudaMemcpy(d_coords, coords, sizeof(f64) * n, cudaMemcpyHostToDevice));
-
-    usize numBlocks = n % BlockSize == 0 ? n / BlockSize : n / BlockSize + 1;
-    HistogramGlobal<T, Dim><<<numBlocks, BlockSize>>>(
-        d_histogram,
-        d_binEdges, d_binEdgesIdx, d_nBinsAxis,
-        d_xMin, d_xMax,
-        d_coords, nullptr, n
-    );
-    ERRCHECK(cudaPeekAtLastError());
-}
-
-template <typename T, usize Dim, usize BlockSize>
-void GHisto<T, Dim, BlockSize>::Fill(usize n, const f64 *coords, const f64 *weights) {
-    if (n > maxBulkSize) {
-        Fill(maxBulkSize, coords, weights);
-        Fill(n - maxBulkSize, coords + maxBulkSize, weights + maxBulkSize);
+        FillN(maxBulkSize, coords, weights);
+        if (weights)
+            FillN(n - maxBulkSize, coords + maxBulkSize, weights + maxBulkSize);
+        else
+            FillN(n - maxBulkSize, coords + maxBulkSize, nullptr);
         return;
     }
 

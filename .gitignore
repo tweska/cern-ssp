@@ -1,6 +1,12 @@
+*
+!*/
+!*.*
+*.o
+
 bin/
 obj/
 
 .vscode/
 .idea/
 .clang-format
+compile_commands.json

@@ -3,15 +3,16 @@
 
 #include "GHisto.h"
 
+template <typename T>
 __device__
-f32 inline Angle(f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1) {
+T Angle(T x0, T y0, T z0, T x1, T y1, T z1){
     // cross product
     const auto cx = y0 * z1 - y1 * z0;
     const auto cy = x0 * z1 - x1 * z0;
     const auto cz = x0 * y1 - x1 * y0;
 
     // norm of cross product
-    const auto c = std::sqrt(cx * cx + cy * cy + cz * cz);
+    const auto c = sqrt(cx * cx + cy * cy + cz * cz);
 
     // dot product
     const auto  d = x0 * x1 + y0 * y1 + z0 * z1;
@@ -19,11 +20,12 @@ f32 inline Angle(f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1) {
     return atan2(c, d);
 }
 
+template <typename T>
 __device__
-f32 InvariantMassesPxPyPzM(
-   const f32 x0, const f32 y0, const f32 z0, const f32 mass0,
-   const f32 x1, const f32 y1, const f32 z1, const f32 mass1
-) {
+T InvariantMassesPxPyPzM(
+   const T x0, const T y0, const T z0, const T mass0,
+   const T x1, const T y1, const T z1, const T mass1)
+{
     // Numerically stable computation of Invariant Masses
     const auto p0_sq = x0 * x0 + y0 * y0 + z0 * z0;
     const auto p1_sq = x1 * x1 + y1 * y1 + z1 * z1;
@@ -65,10 +67,11 @@ f32 InvariantMassesPxPyPzM(
 
 /// @brief Return the invariant mass of two particles given their
 /// transverse momentum (pt), rapidity (eta), azimuth (phi) and mass.
+template <typename T>
 __device__
-f32 inline InvariantMasses(
-    f32 pt0, f32 eta0, f32 phi0, f32 mass0,
-    f32 pt1, f32 eta1, f32 phi1, f32 mass1
+T inline InvariantMasses(
+    T pt0, T eta0, T phi0, T mass0,
+    T pt1, T eta1, T phi1, T mass1
 ) {
     const auto x0 = pt0 * cos(phi0);
     const auto y0 = pt0 * sin(phi0);
@@ -86,7 +89,7 @@ f32 inline InvariantMasses(
 __device__
 f64 InvariantCoordMasses(f64 *coords, usize n)
 {
-    return InvariantMasses(
+    return InvariantMasses<f32>(
         coords[0 * n], coords[2 * n], coords[4 * n], coords[6 * n],
         coords[1 * n], coords[3 * n], coords[5 * n], coords[7 * n]
     );
@@ -105,7 +108,7 @@ __device__ inline usize FindBin(f64 x, usize nBins, f64 xMin, f64 xMax) {
     if (!(x < xMax))
         return nBins + 1;
 
-    return 1 + usize(nBins * (x - xMin) / (xMax - xMin));
+    return 1 + static_cast<usize>(nBins * (x - xMin) / (xMax - xMin));
 }
 
 /// @brief Calculate the corresponding bin for a value in an n-Dimensional histogram.

@@ -37,6 +37,6 @@ public:
     void FillN(usize n, const f64 *coords, const f64 *weights = nullptr);
 };
 
-using GHistoIM = GHisto<double, InvariantCoordMasses>;
+using GHistoIM = GHisto<f64, InvariantCoordMasses>;
 
 #endif //GHISTO_H

@@ -12,7 +12,9 @@
 #include "../../inc/types.h"
 #include "../../inc/util.h"
 
+#define MAX_ERROR 0.01
 #define BATCH_SIZE 1024
+#define BINS 30000
 
 using std::chrono::high_resolution_clock;
 using std::chrono::duration_cast;
@@ -24,7 +26,7 @@ i32 main() {
     auto t0 = high_resolution_clock::now();
 
     f64 *coords = new f64[8 * BATCH_SIZE];
-    auto gpuHisto = GHistoIM(30000 + 2, 0.25, 300, 8, BATCH_SIZE);
+    auto gpuHisto = GHistoIM(BINS + 2, 0.25, 300, 8, BATCH_SIZE);
 
     TFile file("~/root-files/Run2012BC_DoubleMuParked_Muons.root");
     TTreeReader reader("Events", &file);
@@ -73,7 +75,7 @@ i32 main() {
     }
 
     // Retreive the gpu results
-    f64 *gpuResults = new f64[30000 + 2];
+    f64 *gpuResults = new f64[BINS + 2];
     gpuHisto.RetrieveResults(gpuResults);
 
     auto t1 = high_resolution_clock::now();
@@ -85,7 +87,7 @@ i32 main() {
     auto df_mass = df_os.Define("Dimuon_mass",
                                 ROOT::VecOps::InvariantMass<f32>,
                                 {"Muon_pt", "Muon_eta", "Muon_phi", "Muon_mass"});
-    auto cpuHisto = df_mass.Histo1D({"Dimuon_mass", "Dimuon mass;m_{#mu#mu} (GeV);N_{Events}", 30000, 0.25, 300}, "Dimuon_mass");
+    auto cpuHisto = df_mass.Histo1D({"Dimuon_mass", "Dimuon mass;m_{#mu#mu} (GeV);N_{Events}", BINS, 0.25, 300}, "Dimuon_mass");
     f64 *cpuResults = cpuHisto->GetArray();
 
     auto t2 = high_resolution_clock::now();
@@ -99,7 +101,7 @@ i32 main() {
     printArray(gpuResults, 16);
     printArray(cpuResults, 16);
 
-    if (checkArray(30000, &gpuResults[1], cpuResults)) {
+    if (checkArray(BINS + 2, gpuResults, cpuResults, MAX_ERROR)) {
         std::cout << "TEST SUCCEEDED!" << std::endl;
     } else {
         std::cout << "TEST FAILED!" << std::endl;

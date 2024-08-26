@@ -5,15 +5,16 @@
 
 /// @brief Return the invariant mass of two particles given their
 /// transverse momentum (pt), rapidity (eta), azimuth (phi) and mass.
+template <typename T>
 __device__
-f32 inline invariantMass(
-    f32 pt0, f32 eta0, f32 phi0, f32 mass0,
-    f32 pt1, f32 eta1, f32 phi1, f32 mass1
+T inline invariantMass(
+    T pt0, T eta0, T phi0, T mass0,
+    T pt1, T eta1, T phi1, T mass1
 ) {
-    f32 x_sum = 0.0;
-    f32 y_sum = 0.0;
-    f32 z_sum = 0.0;
-    f32 e_sum = 0.0;
+    T x_sum = 0.0;
+    T y_sum = 0.0;
+    T z_sum = 0.0;
+    T e_sum = 0.0;
 
     {
         const auto x = pt0 * cos(phi0);
@@ -42,7 +43,7 @@ f32 inline invariantMass(
 __device__
 f64 invariantCoordMass(f64 *coords, usize n)
 {
-    return invariantMass(
+    return invariantMass<f32>(
         coords[0 * n], coords[2 * n], coords[4 * n], coords[6 * n],
         coords[1 * n], coords[3 * n], coords[5 * n], coords[7 * n]
     );

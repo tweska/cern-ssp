@@ -1,13 +1,12 @@
-#ifndef GHISTO_H
-#define GHISTO_H
+#ifndef GPUDEFHISTO_H
+#define GPUDEFHISTO_H
 
 #include "../../inc/types.h"
 
 typedef f64 (Op)(f64*, usize);
-f64 InvariantCoordMasses(f64 *coords, size_t n);
 
 template <typename T, Op op, usize BlockSize = 256>
-class GHisto {
+class GpuDefHisto {
 protected:
     T     *d_histogram;   ///< Histogram buffer
     usize    nBins;       ///< Total number of bins in the histogram (with under/overflow)
@@ -22,21 +21,20 @@ protected:
     usize    maxBulkSize; ///< Size of the coordinates buffer
 
 public:
-    GHisto() = delete;
-    GHisto(
+    GpuDefHisto() = delete;
+    GpuDefHisto(
         usize nBins,
         f64 xMin, f64 xMax,
         usize bulkDims, usize maxBulkSize = 256
     );
-    ~GHisto();
+    ~GpuDefHisto();
 
-    GHisto(const GHisto &) = delete;
-    GHisto &operator=(const GHisto &) = delete;
+    GpuDefHisto(const GpuDefHisto &) = delete;
+    GpuDefHisto &operator=(const GpuDefHisto &) = delete;
 
     void RetrieveResults(T *histogram);
+    usize ExecuteOp(const f64 *coord);
     void FillN(usize n, const f64 *coords, const f64 *weights = nullptr);
 };
 
-using GHistoIM = GHisto<f64, InvariantCoordMasses>;
-
-#endif //GHISTO_H
+#endif //GPUDEFHISTO_H

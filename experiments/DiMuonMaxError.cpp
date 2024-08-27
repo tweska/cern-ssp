@@ -1,4 +1,6 @@
-#include <chrono>
+/// Example based on the df102_NanoAODDimuonAnalysis.C tutorial
+/// Original: https://root.cern/doc/master/df102__NanoAODDimuonAnalysis_8C.html
+
 #include <iostream>
 
 // ROOT
@@ -8,27 +10,24 @@
 #include <TTreeReaderArray.h>
 #include <ROOT/RDataFrame.hxx>
 
-#include "GHisto.h"
-#include "../../inc/types.h"
-#include "../../inc/util.h"
+#include "types.h"
+#include "util.h"
 
-#define MAX_ERROR 0.01
-#define BATCH_SIZE 1024
+#include "InvariantMass.h"
+
 #define BINS 30000
+#define BATCH_SIZE 1024
 
-using std::chrono::high_resolution_clock;
-using std::chrono::duration_cast;
-using std::chrono::duration;
-using std::chrono::milliseconds;
-
-i32 main() {
+int main()
+{
     ROOT::EnableImplicitMT();
-    auto t0 = high_resolution_clock::now();
 
-    f64 *coords = new f64[8 * BATCH_SIZE];
-    auto gpuHisto = GHistoIM(BINS + 2, 0.25, 300, 8, BATCH_SIZE);
+    auto coords = new f64[8 * BATCH_SIZE];
+    auto gpuHisto = GpuInvariantMassHisto(
+        BINS + 2, 0.25, 300, 8, BATCH_SIZE
+    );
 
-    TFile file("~/root-files/Run2012BC_DoubleMuParked_Muons.root");
+    TFile file("data/Run2012BC_DoubleMuParked_Muons.root");
     TTreeReader reader("Events", &file);
 
     // Values for filtering
@@ -78,7 +77,6 @@ i32 main() {
     f64 *gpuResults = new f64[BINS + 2];
     gpuHisto.RetrieveResults(gpuResults);
 
-    auto t1 = high_resolution_clock::now();
 
     // Same analysis on the CPU using RDF
     ROOT::RDataFrame df("Events", "~/root-files/Run2012BC_DoubleMuParked_Muons.root");
@@ -87,29 +85,18 @@ i32 main() {
     auto df_mass = df_os.Define("Dimuon_mass",
                                 [](const ROOT::RVec<f32>& pt, const ROOT::RVec<f32>& eta,
                                    const ROOT::RVec<f32>& phi, const ROOT::RVec<f32>& mass) {
-                                    return ROOT::VecOps::InvariantMasses<f32>(
+                                    return ROOT::VecOps::InvariantMasses<f64>(
                                         {pt[0]}, {eta[0]}, {phi[0]}, {mass[0]},
                                         {pt[1]}, {eta[1]}, {phi[1]}, {mass[1]});},
                                         {"Muon_pt", "Muon_eta", "Muon_phi", "Muon_mass"});
     auto cpuHisto = df_mass.Histo1D({"Dimuon_mass", "Dimuon mass;m_{#mu#mu} (GeV);N_{Events}", BINS, 0.25, 300}, "Dimuon_mass");
     f64 *cpuResults = cpuHisto->GetArray();
 
-    auto t2 = high_resolution_clock::now();
-
-    duration<f64, std::milli> gpuRuntimeMs = t1 - t0;
-    duration<f64, std::milli> cpuRuntimeMs = t2 - t1;
-    std::cout << "Timing results:" << std::endl;
-    std::cout << "    GPU: " << gpuRuntimeMs.count() << std::endl;
-    std::cout << "    CPU: " << cpuRuntimeMs.count() << std::endl;
-
-    printArray(gpuResults, 16);
-    printArray(cpuResults, 16);
-
-    if (checkArray(BINS + 2, gpuResults, cpuResults, MAX_ERROR)) {
-        std::cout << "TEST SUCCEEDED!" << std::endl;
-    } else {
-        std::cout << "TEST FAILED!" << std::endl;
-    }
+    f64 maxError, gpuValue, cpuValue;
+    arrayMaxError(&maxError, &gpuValue, &cpuValue, BINS + 2, gpuResults, cpuResults);
+    std::cout << "Observed maximum error: " << maxError << std::endl;
+    std::cout << "GPU value: " << gpuValue << std::endl;
+    std::cout << "CPU value: " << cpuValue << std::endl;
 
     delete[] coords;
     delete[] gpuResults;

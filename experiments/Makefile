@@ -13,7 +13,7 @@ SOURCE_FILES  = $(wildcard src/*.cpp) $(wildcard src/*.cu)
 OBJECT_FILES  = $(patsubst src/%.cpp, obj/%.cpp.o, $(patsubst src/%.cu, obj/%.cu.o, $(SOURCE_FILES)))
 
 DATA          = data/Run2012BC_DoubleMuParked_Muons.root
-TARGETS       = bin/DiMuonMaxError bin/DiMuonBinCheck bin/DiMuonCpuPerf bin/DiMuonGpuPerf
+TARGETS       = bin/DiMuonMaxError bin/DiMuonBinCheck bin/DiMuonCpuPerf bin/DiMuonGpuPerf1 bin/DiMuonGpuPerf2
 
 all: $(DATA) $(TARGETS)
 

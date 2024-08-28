@@ -5,7 +5,7 @@
 
 #include "../../inc/types.h"
 
-typedef f64 (Op)(f64*, usize);
+typedef f64 (Op)(f64*, usize, usize);
 
 template <typename T, Op op, usize BlockSize = 256>
 class GpuDefHisto {

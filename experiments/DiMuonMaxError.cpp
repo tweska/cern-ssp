@@ -41,36 +41,28 @@ int main()
     TTreeReaderArray<f32> mass(reader, "Muon_mass");
 
     // Process the batches
-    usize n = 0;
+    usize offset = 0;
     while (reader.Next()) {
         if (*nMuon == 2 && muon_charge[0] != muon_charge[1]) {
-            coords[n + 0 * BATCH_SIZE] = pt[0];
-            coords[n + 1 * BATCH_SIZE] = pt[1];
-            coords[n + 2 * BATCH_SIZE] = eta[0];
-            coords[n + 3 * BATCH_SIZE] = eta[1];
-            coords[n + 4 * BATCH_SIZE] = phi[0];
-            coords[n + 5 * BATCH_SIZE] = phi[1];
-            coords[n + 6 * BATCH_SIZE] = mass[0];
-            coords[n + 7 * BATCH_SIZE] = mass[1];
+            coords[offset++] = pt[0];
+            coords[offset++] = pt[1];
+            coords[offset++] = eta[0];
+            coords[offset++] = eta[1];
+            coords[offset++] = phi[0];
+            coords[offset++] = phi[1];
+            coords[offset++] = mass[0];
+            coords[offset++] = mass[1];
 
-            if (++n == BATCH_SIZE) {
-                gpuHisto.FillN(n, coords, nullptr);
-                n = 0;
+            if (offset == 8 * BATCH_SIZE) {
+                gpuHisto.FillN(BATCH_SIZE, coords);
+                offset = 0;
             }
         }
     }
 
     // Process the last batch
-    if (n > 0) {
-        memcpy(&coords[1 * n], &coords[1 * BATCH_SIZE], n * sizeof(f64));
-        memcpy(&coords[2 * n], &coords[2 * BATCH_SIZE], n * sizeof(f64));
-        memcpy(&coords[3 * n], &coords[3 * BATCH_SIZE], n * sizeof(f64));
-        memcpy(&coords[4 * n], &coords[4 * BATCH_SIZE], n * sizeof(f64));
-        memcpy(&coords[5 * n], &coords[5 * BATCH_SIZE], n * sizeof(f64));
-        memcpy(&coords[6 * n], &coords[6 * BATCH_SIZE], n * sizeof(f64));
-        memcpy(&coords[7 * n], &coords[7 * BATCH_SIZE], n * sizeof(f64));
-
-        gpuHisto.FillN(n, coords, nullptr);
+    if (offset != 0) {
+        gpuHisto.FillN(offset / 8, coords);
     }
 
     // Retreive the gpu results

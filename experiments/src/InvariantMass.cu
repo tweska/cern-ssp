@@ -89,11 +89,12 @@ T inline InvariantMass(
 /// @brief Return the invariant mass of two particles given their
 /// transverse momentum (pt), rapidity (eta), azimuth (phi) and mass.
 __device__
-f64 InvariantMass(f64 *coords, usize n)
+f64 InvariantMass(f64 *coords, usize i, usize n)
 {
+    const usize offset = i * 8;
     return InvariantMass<f64>(
-        coords[0 * n], coords[2 * n], coords[4 * n], coords[6 * n],
-        coords[1 * n], coords[3 * n], coords[5 * n], coords[7 * n]
+        coords[offset + 0], coords[offset + 2], coords[offset + 4], coords[offset + 6],
+        coords[offset + 1], coords[offset + 3], coords[offset + 5], coords[offset + 7]
     );
 }
 

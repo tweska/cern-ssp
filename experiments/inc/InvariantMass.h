@@ -5,7 +5,7 @@
 
 #include "GpuDefHisto.h"
 
-f64 InvariantMass(f64 *coords, usize n);
+f64 InvariantMass(f64 *coords, usize i, usize n);
 using GpuInvariantMassHisto = GpuDefHisto<f64, InvariantMass>;
 
 #endif //INVARIANTMASS_H

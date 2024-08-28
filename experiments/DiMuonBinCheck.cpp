@@ -9,7 +9,7 @@
 #include <TTreeReader.h>
 #include <TTreeReaderValue.h>
 #include <TTreeReaderArray.h>
-#include <ROOT/RDataFrame.hxx>
+#include <ROOT/RDF/RInterface.hxx>
 
 #include "types.h"
 

@@ -1,30 +1,31 @@
 /// Example based on the df102_NanoAODDimuonAnalysis.C tutorial
 /// Original: https://root.cern/doc/master/df102__NanoAODDimuonAnalysis_8C.html
 
-#include <chrono>
 #include <iostream>
-#include <iomanip>
 
 // ROOT
 #include <ROOT/RDataFrame.hxx>
+#include <ROOT/RLogger.hxx>
 
 #include "types.h"
+#include "timer.h"
 
 #define RUNS 10
 
-using std::chrono::high_resolution_clock;
-using std::chrono::duration_cast;
-using std::chrono::duration;
-using std::chrono::milliseconds;
-
 int main()
 {
+    Timer timer;
+
     ROOT::EnableImplicitMT();
+    auto verbosity = ROOT::Experimental::RLogScopedVerbosity(
+        ROOT::Detail::RDF::RDFLogChannel(),
+        ROOT::Experimental::ELogLevel::kInfo
+    );
 
     for (usize i = 0; i < RUNS; ++i) {
-        auto t0 = high_resolution_clock::now();
+        timer.start();
 
-        ROOT::RDataFrame df("Events", "~/root-files/Run2012BC_DoubleMuParked_Muons.root");
+        ROOT::RDataFrame df("Events", "data/Run2012BC_DoubleMuParked_Muons.root");
         auto df_os = df.Filter("nMuon == 2")
                        .Filter("Muon_charge[0] != Muon_charge[1]");
         auto df_mass = df_os.Define("Dimuon_mass",
@@ -38,9 +39,8 @@ int main()
         f64 *cpuResults = cpuHisto->GetArray();
         (void) cpuResults;
 
-        auto t1 = high_resolution_clock::now();
-        duration<f64, std::milli> runtime = t1 - t0;
-        std::cout << "runtime = " << std::setw(10) << std::fixed << std::setprecision(5) << runtime.count() << std::endl;
+        timer.pause();
+        std::cout << "runtime = " << std::setw(10) << std::fixed << std::setprecision(3) << timer.getTotal() << std::endl;
     }
 
     return 0;

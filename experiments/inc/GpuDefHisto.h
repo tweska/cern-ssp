@@ -3,7 +3,8 @@
 
 #include <iostream>
 
-#include "../../inc/types.h"
+#include "types.h"
+#include "timer.h"
 
 typedef f64 (Op)(f64*, usize, usize);
 
@@ -22,10 +23,10 @@ protected:
     usize    bulkDims;    ///< Number of dimensions in the coordinate buffer
     usize    maxBulkSize; ///< Size of the coordinates buffer
 
-    f64 runtimeInit     = 0.0;
-    f64 runtimeTransfer = 0.0;
-    f64 runtimeKernel   = 0.0;
-    f64 runtimeResult   = 0.0;
+    Timer<> timerInit;
+    Timer<> timerTransfer;
+    Timer<> timerKernel;
+    Timer<> timerResult;
 
 public:
     GpuDefHisto() = delete;

@@ -1,7 +1,6 @@
 /// Example based on the df102_NanoAODDimuonAnalysis.C tutorial
 /// Original: https://root.cern/doc/master/df102__NanoAODDimuonAnalysis_8C.html
 
-#include <chrono>
 #include <iostream>
 
 // ROOT

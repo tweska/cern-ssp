@@ -23,13 +23,18 @@ protected:
     usize    bulkDims;    ///< Number of dimensions in the coordinate buffer
     usize    maxBulkSize; ///< Size of the coordinates buffer
 
-    Timer<> timerInit;
-    Timer<> timerTransfer;
-    Timer<> timerKernel;
-    Timer<> timerResult;
+    Timer<> *timerTransfer;
+    Timer<> *timerFill;
+    Timer<> *timerResult;
 
 public:
     GpuDefHisto() = delete;
+    GpuDefHisto(
+        usize nBins,
+        f64 xMin, f64 xMax,
+        usize bulkDims, usize maxBulkSize,
+        Timer<> *timerTransfer, Timer<> *timerFill, Timer<> *timerResult
+    );
     GpuDefHisto(
         usize nBins,
         f64 xMin, f64 xMax,
@@ -41,7 +46,6 @@ public:
     GpuDefHisto &operator=(const GpuDefHisto &) = delete;
 
     void RetrieveResults(T *histogram);
-    void GetRuntime(f64 *runtimeInit, f64 *runtimeTransfer, f64 *runtimeKernel, f64 *runtimeResult);
     void PrintRuntime(std::ostream &output = std::cout);
     usize ExecuteOp(const f64 *coord);
     void FillN(usize n, const f64 *coords, const f64 *weights = nullptr);

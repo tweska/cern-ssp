@@ -5,25 +5,22 @@
 
 // ROOT
 #include <TFile.h>
-#include <TTreeReaderValue.h>
-#include <ROOT/RDataFrame.hxx>
+#include <ROOT/RDF/RInterface.hxx>
 
 #include "types.h"
-#include "util.h"
 
 #include "InvariantMass.h"
 
 #define BINS 30000
 #define BATCH_SIZE 32768
+#define RUNS 3
 
-int main()
-{
-    ROOT::EnableImplicitMT();
-
+void DiMuonGpu(Timer<> *rtTransfer, Timer<> *rtFill, Timer<> *rtResult) {
     TFile file("data/Run2012BC_DoubleMuParked_Muons.root");
     auto tree = dynamic_cast<TTree *>(file.Get("Events"));
     auto gpuHisto = GpuInvariantMassHisto(
-        BINS + 2, 0.25, 300, 8, BATCH_SIZE
+        BINS + 2, 0.25, 300, 8, BATCH_SIZE,
+        rtTransfer, rtFill, rtResult
     );
     auto coords = new f64[8 * BATCH_SIZE];
     auto *gpuResults = new f64[BINS + 2];
@@ -84,31 +81,16 @@ int main()
 
     // Retrieve the gpu results
     gpuHisto.RetrieveResults(gpuResults);
+}
 
+int main()
+{
+    Timer<> rtsTransfer[RUNS], rtsFill[RUNS], rtsResult[RUNS];
+    for (usize i = 0; i < RUNS; ++i)
+        DiMuonGpu(&rtsTransfer[i], &rtsFill[i], &rtsResult[i]);
+    std::cerr << "Transfer      "; printTimerMinMaxAvg(rtsTransfer, RUNS);
+    std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsFill, RUNS);
+    std::cerr << "Result        "; printTimerMinMaxAvg(rtsResult, RUNS);
 
-    // Same analysis on the CPU using RDF
-    ROOT::RDataFrame df("Events", "data/Run2012BC_DoubleMuParked_Muons.root");
-    auto df_os = df.Filter("nMuon == 2")
-                   .Filter("Muon_charge[0] != Muon_charge[1]");
-    auto df_mass = df_os.Define("Dimuon_mass",
-                                [](const ROOT::RVec<f32>& pt, const ROOT::RVec<f32>& eta,
-                                   const ROOT::RVec<f32>& phi, const ROOT::RVec<f32>& mass) {
-                                    return ROOT::VecOps::InvariantMasses<f64>(
-                                        {pt[0]}, {eta[0]}, {phi[0]}, {mass[0]},
-                                        {pt[1]}, {eta[1]}, {phi[1]}, {mass[1]});},
-                                        {"Muon_pt", "Muon_eta", "Muon_phi", "Muon_mass"});
-    auto cpuHisto = df_mass.Histo1D({"Dimuon_mass", "Dimuon mass;m_{#mu#mu} (GeV);N_{Events}", BINS, 0.25, 300}, "Dimuon_mass");
-    f64 *cpuResults = cpuHisto->GetArray();
-
-    f64 maxError, gpuValue, cpuValue;
-    arrayMaxError(&maxError, &gpuValue, &cpuValue, BINS + 2, gpuResults, cpuResults);
-    std::cout << "Observed maximum error: " << maxError << std::endl;
-    if (maxError > 0) {
-        std::cout << "GPU value: " << gpuValue << std::endl;
-        std::cout << "CPU value: " << cpuValue << std::endl;
-    }
-
-    delete[] coords;
-    delete[] gpuResults;
     return 0;
 }

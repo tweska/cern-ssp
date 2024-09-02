@@ -1,6 +1,9 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <cassert>
+
+#include <iomanip>
 #include <iostream>
 #include <numeric>
 
@@ -88,6 +91,33 @@ void printArray(T* array, usize n, std::ostream &output = std::cout)
         output << array[i] << " ";
     }
     output << "]" << std::endl;
+}
+
+template <typename T>
+void arrayMinMaxAvg(T array[], usize n, T &min, T &max, T &avg)
+{
+    assert(n >=1);
+    T sum = min = max = array[0];
+
+    for (usize i = 1; i < n; ++i) {
+        sum += array[i];
+        if (array[i] < min)
+            min = array[i];
+        if (array[i] > max)
+            max = array[i];
+    }
+
+    avg = sum / n;
+}
+
+template <typename T>
+void printArrayMinMaxAvg(T array[], usize n, std::string unit = "", const i32 width = 6, const i32 precision = 0, std::ostream &output = std::cerr)
+{
+    T min, max, avg;
+    arrayMinMaxAvg(array, n, min, max, avg);
+    output << std::setw(width) << std::fixed << std::setprecision(precision) << min << unit << " (min), "
+           << std::setw(width) << std::fixed << std::setprecision(precision) << max << unit << " (max), "
+           << std::setw(width) << std::fixed << std::setprecision(precision) << avg << unit << " (avg)" << std::endl;
 }
 
 #endif //UTIL_H

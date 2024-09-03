@@ -2,7 +2,7 @@ ROOT_FLAGS    = $(shell root-config --cflags)
 ROOT_LIBS     = $(shell root-config --libs)
 
 CPP_COMPILER  = g++
-CPP_FLAGS     = -O3 -g -Wall -Werror -Iinc -I../inc $(ROOT_FLAGS)
+CPP_FLAGS     = -O3 -g -Wall -Werror -Iinc -I../../inc $(ROOT_FLAGS)
 CPP_LIBS      = $(ROOT_LIBS)
 
 CUDA_COMPILER = nvcc

@@ -4,6 +4,7 @@
 #include <iostream>
 
 // ROOT
+#include <thread>
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RLogger.hxx>
 
@@ -11,16 +12,50 @@
 #include "timer.h"
 
 #define BINS 30000
+#define THREADS 16
+#define BATCH_SIZE (2048 * THREADS)
 #define RUNS 3
 
-void DiMuonCpu(Timer<> &rtDefine, Timer<> &rtFill) {
+void bulkThread(const f64 *coords, TH1D *histo, const usize n, const usize tid) {
+    const usize start = BATCH_SIZE / THREADS * tid;
+    const usize end = std::min(start + BATCH_SIZE / THREADS, n);
+    usize offset = start * 8;
+
+    for (usize i = start; i < end; ++i) {
+        const f64 invariantMass = ROOT::VecOps::InvariantMasses<f64>(
+            {coords[offset + 0]}, {coords[offset + 2]}, {coords[offset + 4]}, {coords[offset + 6]},
+            {coords[offset + 1]}, {coords[offset + 3]}, {coords[offset + 5]}, {coords[offset + 7]}
+        )[0];
+        histo->Fill(invariantMass);
+        offset += 8;
+    }
+}
+
+void processBulk(f64 *coords, std::vector<TH1D*> histos, usize n) {
+    std::vector<std::thread> threads;
+    threads.reserve(THREADS);
+    for (usize tid = 0; tid < THREADS; ++tid) {
+        threads.emplace_back(bulkThread, coords, histos[tid], n, tid);
+    }
+
+    for (auto &thread : threads) {
+        thread.join();
+    }
+}
+
+void DiMuonCpu(Timer<> &rtCombined) {
     TFile file("data/Run2012BC_DoubleMuParked_Muons.root");
     auto tree = dynamic_cast<TTree *>(file.Get("Events"));
-    auto histo = TH1D(
-        "Dimuon_mass",
-        "Dimuon mass;m_{#mu#mu} (GeV);N_{Events}",
-        BINS, 0.25, 300
-    );
+    std::vector<TH1D*> histos;
+    histos.reserve(THREADS);
+    for (usize tid = 0; tid < THREADS; ++tid) {
+        histos.push_back(new TH1D(
+            ("Dimuon_mass_" + std::to_string(tid)).c_str(),
+            "Dimuon mass;m_{#mu#mu} (GeV);N_{Events}",
+            BINS, 0.25, 300
+        ));
+    }
+    auto coords = new f64[8 * BATCH_SIZE];
 
     // Values on stack
     u32 nMuon;
@@ -42,6 +77,7 @@ void DiMuonCpu(Timer<> &rtDefine, Timer<> &rtFill) {
     const auto massBranch = tree->GetBranch("Muon_mass");
 
     // Process the batches
+    usize offset = 0;
     isize nEntries = tree->GetEntries();
     for (isize i = 0; i < nEntries; ++i) {
         nMuonBranch->GetEntry(i);
@@ -55,33 +91,51 @@ void DiMuonCpu(Timer<> &rtDefine, Timer<> &rtFill) {
         phiBranch->GetEntry(i);
         massBranch->GetEntry(i);
 
-        rtDefine.start();
-        f64 invariantMass = ROOT::VecOps::InvariantMasses<f64>(
-            {pt[0]}, {eta[0]}, {phi[0]}, {mass[0]},
-            {pt[1]}, {eta[1]}, {phi[1]}, {mass[1]}
-        )[0];
-        rtDefine.pause();
-        rtFill.start();
-        histo.Fill(invariantMass);
-        rtFill.pause();
+        coords[offset++] = pt[0];
+        coords[offset++] = pt[1];
+        coords[offset++] = eta[0];
+        coords[offset++] = eta[1];
+        coords[offset++] = phi[0];
+        coords[offset++] = phi[1];
+        coords[offset++] = mass[0];
+        coords[offset++] = mass[1];
+
+        if (offset == 8 * BATCH_SIZE) {
+            rtCombined.start();
+            processBulk(coords, histos, BATCH_SIZE);
+            rtCombined.pause();
+            offset = 0;
+        }
     }
 
-    f64 *results = histo.GetArray();
+    // Process the last batch
+    if (offset != 0) {
+        rtCombined.start();
+        processBulk(coords, histos, offset / 8);
+        rtCombined.pause();
+    }
+
+    TH1D mergedHisto(
+        "Merged_Dimuon_mass",
+        "Merged Dimuon mass;m_{#mu#mu} (GeV);N_{Events}",
+        BINS, 0.25, 300
+    );
+    for (const auto &histo : histos) {
+        mergedHisto.Add(histo);
+    }
+
+    f64 *results = mergedHisto.GetArray();
     (void) results;
+
+    delete[] coords;
 }
 
 int main()
 {
-    Timer<> rtsDefine[RUNS], rtsFill[RUNS];
+    Timer<> rtsCombined[RUNS];
     for (usize i = 0; i < RUNS; ++i)
-        DiMuonCpu(rtsDefine[i], rtsFill[i]);
-    std::cerr << "Define        "; printTimerMinMaxAvg(rtsDefine, RUNS);
-    std::cerr << "Fill          "; printTimerMinMaxAvg(rtsFill, RUNS);
-
-    Timer<> rtsBoth[RUNS];
-    for (usize i = 0; i < RUNS; ++i)
-        rtsBoth[i] = rtsDefine[i] + rtsFill[i];
-    std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsBoth, RUNS);
+        DiMuonCpu(rtsCombined[i]);
+    std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsCombined, RUNS);
 
     return 0;
 }

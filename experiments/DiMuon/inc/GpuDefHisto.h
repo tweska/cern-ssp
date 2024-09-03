@@ -1,8 +1,6 @@
 #ifndef GPUDEFHISTO_H
 #define GPUDEFHISTO_H
 
-#include <iostream>
-
 #include "types.h"
 #include "timer.h"
 
@@ -46,7 +44,6 @@ public:
     GpuDefHisto &operator=(const GpuDefHisto &) = delete;
 
     void RetrieveResults(T *histogram);
-    void PrintRuntime(std::ostream &output = std::cout);
     usize ExecuteOp(const f64 *coord);
     void FillN(usize n, const f64 *coords, const f64 *weights = nullptr);
 };

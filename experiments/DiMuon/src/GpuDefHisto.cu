@@ -1,6 +1,3 @@
-#include <iostream>
-#include <iomanip>
-
 #include "CUDAHelpers.cuh"
 #include "types.h"
 
@@ -83,6 +80,7 @@ GpuDefHisto<T, op, BlockSize>::GpuDefHisto(
     ERRCHECK(cudaMalloc(&d_histogram, sizeof(T) * nBins));
     ERRCHECK(cudaMalloc(&d_coords, sizeof(f64) * bulkDims * maxBulkSize));
     ERRCHECK(cudaMalloc(&d_weights, sizeof(f64) * maxBulkSize));
+    ERRCHECK(cudaDeviceSynchronize());
 
     this->timerTransfer = timerTransfer;
     this->timerFill = timerFill;
@@ -114,18 +112,8 @@ void GpuDefHisto<T, op, BlockSize>::RetrieveResults(T *histogram)
 {
     if (timerResult) timerResult->start();
     ERRCHECK(cudaMemcpy(histogram, d_histogram, sizeof(T) * nBins, cudaMemcpyDeviceToHost));
+    ERRCHECK(cudaDeviceSynchronize());
     if (timerResult) timerResult->pause();
-}
-
-template<typename T, Op *op, usize BlockSize>
-void GpuDefHisto<T, op, BlockSize>::PrintRuntime(std::ostream &output)
-{
-    // output << "runtimeInit     = " << std::setw(10) << std::fixed << std::setprecision(3) << timerInit.getTotal() << std::endl;
-    // output << "runtimeTransfer = " << std::setw(10) << std::fixed << std::setprecision(3) << timerTransfer.getTotal() << std::endl;
-    // output << "runtimeKernel   = " << std::setw(10) << std::fixed << std::setprecision(3) << timerFill.getTotal() << std::endl;
-    // output << "runtimeResult   = " << std::setw(10) << std::fixed << std::setprecision(3) << timerResult.getTotal() << std::endl;
-    // output << "runtimeFill     = " << std::setw(10) << std::fixed << std::setprecision(3) << timerTransfer.getTotal() + timerFill.getTotal() << "  (transfer + kernel)" << std::endl;
-    // output << "runtimeTotal    = " << std::setw(10) << std::fixed << std::setprecision(3) << timerInit.getTotal() + timerTransfer.getTotal() + timerFill.getTotal() + timerResult.getTotal() << "  (init + coords + kernel + result)" << std::endl;
 }
 
 template<typename T, Op *op, usize BlockSize>
@@ -143,6 +131,7 @@ void GpuDefHisto<T, op, BlockSize>::FillN(
         ERRCHECK(cudaMemcpy(d_weights, weights, sizeof(f64) * n, cudaMemcpyHostToDevice));
         weightsPtr = d_weights;
     }
+    ERRCHECK(cudaDeviceSynchronize());
 
     if (timerTransfer) timerTransfer->pause();
     if (timerFill) timerFill->start();
@@ -153,6 +142,7 @@ void GpuDefHisto<T, op, BlockSize>::FillN(
         xMin, xMax,
         d_coords, weightsPtr, n
     );
+    ERRCHECK(cudaDeviceSynchronize());
     ERRCHECK(cudaPeekAtLastError());
 
     if (timerFill) timerFill->pause();
@@ -166,6 +156,7 @@ usize GpuDefHisto<T, op, BlockSize>::ExecuteOp(const f64 *coord)
     ERRCHECK(cudaMemcpy(d_coords, coord, sizeof(f64) * bulkDims, cudaMemcpyHostToDevice));
 
     ExecuteOpKernel<op><<<1, BlockSize>>>(d_bin, d_coords, nBins, xMin, xMax);
+    ERRCHECK(cudaDeviceSynchronize());
     ERRCHECK(cudaPeekAtLastError());
 
     ERRCHECK(cudaMemcpy(&h_bin, d_bin, sizeof(usize), cudaMemcpyDeviceToHost));

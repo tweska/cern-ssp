@@ -160,36 +160,35 @@ void FoldedWmass()
                 const std::vector<i32>& trueI,
                 const std::vector<f32>& trueDeltaR
             ) {
-                f32 recoIsol1, recoIsol2;
-                i32 trueI1,    trueI2;
-                f32 truePt1,   truePt2;
-                f32 trueIsol1, trueIsol2;
+                b8 foldable = true;
+                f32 truePt1;
+                f32 truePt2;
 
-                recoIsol1 = recoDeltaR[i1];
-                recoIsol2 = recoDeltaR[i2];
-                if (recoIsol1 < ISOLATION_CRITICAL || recoIsol2 < ISOLATION_CRITICAL) {
-                    goto unfoldable;
+                f32 recoIsol1 = recoDeltaR[i1];
+                f32 recoIsol2 = recoDeltaR[i2];
+                i32 trueI1 = trueI[i1];
+                i32 trueI2 = trueI[i2];
+                if (   recoIsol1 < ISOLATION_CRITICAL
+                    || recoIsol2 < ISOLATION_CRITICAL
+                    || trueI1 < 0 || trueI2 < 0
+                    || static_cast<u32>(trueI1) >= truePt.size()
+                    || static_cast<u32>(trueI2) >= truePt.size())
+                {
+                    foldable = false;
                 }
-
-                trueI1 = trueI[i1];
-                trueI2 = trueI[i2];
-                if (trueI1 < 0 || trueI2 < 0) {
-                    goto unfoldable;
-                }
-                if (static_cast<u32>(trueI1) >= truePt.size() || static_cast<u32>(trueI2) >= truePt.size()) {
-                    goto unfoldable;
-                }
-
-                truePt1 = truePt[trueI1];
-                truePt2 = truePt[trueI2];
-                if (static_cast<u32>(trueI1) >= trueDeltaR.size() || static_cast<u32>(trueI2) >= trueDeltaR.size()) {
-                    goto unfoldable;
-                }
-
-                trueIsol1 = trueDeltaR[trueI1];
-                trueIsol2 = trueDeltaR[trueI2];
-                if (trueIsol1 < ISOLATION_CRITICAL || trueIsol2 < ISOLATION_CRITICAL) {
-                    goto unfoldable;
+                else
+                {
+                    truePt1 = truePt[trueI1];
+                    truePt2 = truePt[trueI2];
+                    f32 trueIsol1 = trueDeltaR[trueI1];
+                    f32 trueIsol2 = trueDeltaR[trueI2];
+                    if (   static_cast<u32>(trueI1) >= trueDeltaR.size()
+                        || static_cast<u32>(trueI2) >= trueDeltaR.size()
+                        || trueIsol1 < ISOLATION_CRITICAL
+                        || trueIsol2 < ISOLATION_CRITICAL)
+                    {
+                        foldable = false;
+                    }
                 }
 
                 return foldedMass(
@@ -197,16 +196,7 @@ void FoldedWmass()
                     recoPt[i2], recoEta[i2], recoPhi[i2], recoE[i2],
                     truePt1, truePt2,
                     scale, resolution,
-                    true
-                );
-
-                unfoldable:
-                return foldedMass(
-                    recoPt[i1], recoEta[i1], recoPhi[i1], recoE[i1],
-                    recoPt[i2], recoEta[i2], recoPhi[i2], recoE[i2],
-                    0, 0,
-                    scale, resolution,
-                    false
+                    foldable
                 );
             };
 

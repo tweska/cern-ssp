@@ -12,7 +12,7 @@ CUDA_LIBS     = -lcuda -lcudart
 SOURCE_FILES  = $(wildcard src/*.cpp) $(wildcard src/*.cu)
 OBJECT_FILES  = $(patsubst src/%.cpp, obj/%.cpp.o, $(patsubst src/%.cu, obj/%.cu.o, $(SOURCE_FILES)))
 
-TARGETS       = bin/FoldedWmassReference
+TARGETS       = bin/FoldedWmassReference bin/FoldedWmassSimple
 
 all: $(TARGETS)
 

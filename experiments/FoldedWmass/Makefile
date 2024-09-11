@@ -12,7 +12,7 @@ CUDA_LIBS     = -lcuda -lcudart
 SOURCE_FILES  = $(wildcard src/*.cpp) $(wildcard src/*.cu)
 OBJECT_FILES  = $(patsubst src/%.cpp, obj/%.cpp.o, $(patsubst src/%.cu, obj/%.cu.o, $(SOURCE_FILES)))
 
-TARGETS       = bin/CpuFWM
+TARGETS       = bin/CpuFWM bin/GpuFWM
 
 all: $(TARGETS)
 
@@ -23,6 +23,10 @@ obj/%.cpp.o: src/%.cpp
 obj/%.cu.o: src/%.cu
 	@mkdir -p obj
 	$(CUDA_COMPILER) -c $< -o $@ $(CUDA_FLAGS)
+
+bin/CpuFWM: CpuFWM.cpp
+	@mkdir -p bin
+	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
 
 bin/%: %.cpp $(OBJECT_FILES)
 	@mkdir -p bin

@@ -8,6 +8,10 @@
 
 #define ISOLATION_CRITICAL 0.5
 
+#define NBINS 100
+#define XMIN    0
+#define XMAX  400
+
 inline f32 angle(
     const f32 x1, const f32 y1, const f32 z1,
     const f32 x2, const f32 y2, const f32 z2
@@ -222,7 +226,7 @@ void FoldedWmass()
                     "truePt1", "truePt2"
                 }
             );
-            histos.emplace_back(newNode.Histo1D(name));
+            histos.emplace_back(newNode.Histo1D({name.c_str(), "", NBINS, XMIN, XMAX}, name));
         }
     }
     RunGraphs(histos);

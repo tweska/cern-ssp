@@ -144,6 +144,50 @@ void FoldedWmass()
         "TtbarLjets_spanet_up_index_NOSYS >= 0 && TtbarLjets_spanet_down_index_NOSYS >= 0"
     );
 
+    auto foldabilityTest = [](
+        const std::vector<f32>& truePt,
+        const i32 i1, const i32 i2,
+        const std::vector<f32>& recoDeltaR,
+        const std::vector<i32>& trueI,
+        const std::vector<f32>& trueDeltaR
+    ) {
+        f32 recoIsol1 = recoDeltaR[i1];
+        f32 recoIsol2 = recoDeltaR[i2];
+        i32 trueI1 = trueI[i1];
+        i32 trueI2 = trueI[i2];
+        if (   recoIsol1 < ISOLATION_CRITICAL
+            || recoIsol2 < ISOLATION_CRITICAL
+            || trueI1 < 0 || trueI2 < 0
+            || static_cast<u32>(trueI1) >= truePt.size()
+            || static_cast<u32>(trueI2) >= truePt.size())
+        {
+            return false;
+        }
+
+        f32 trueIsol1 = trueDeltaR[trueI1];
+        f32 trueIsol2 = trueDeltaR[trueI2];
+        if (   static_cast<u32>(trueI1) >= trueDeltaR.size()
+            || static_cast<u32>(trueI2) >= trueDeltaR.size()
+            || trueIsol1 < ISOLATION_CRITICAL
+            || trueIsol2 < ISOLATION_CRITICAL)
+        {
+            return false;
+        }
+
+        return true;
+    };
+    df = df.Define(
+        "foldable",
+        foldabilityTest,
+        {
+            "particleLevel.jet_pt",
+            "TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS",
+            "jet_reco_to_reco_jet_closest_dR_NOSYS",
+            "jet_truth_jet_paired_index",
+            "jet_truth_to_truth_jet_closest_dR"
+        }
+    );
+
     std::vector<ROOT::RDF::RResultHandle> histos;
     for (i32 s = 0; s < 100; ++s) {
         for (i32 r = 0; r < 100; ++r) {
@@ -156,39 +200,15 @@ void FoldedWmass()
                 const std::vector<f32>& recoE,
                 const std::vector<f32>& truePt,
                 const i32 i1, const i32 i2,
-                const std::vector<f32>& recoDeltaR,
                 const std::vector<i32>& trueI,
-                const std::vector<f32>& trueDeltaR
+                const b8 foldable
             ) {
-                b8 foldable = true;
                 f32 truePt1;
                 f32 truePt2;
 
-                f32 recoIsol1 = recoDeltaR[i1];
-                f32 recoIsol2 = recoDeltaR[i2];
-                i32 trueI1 = trueI[i1];
-                i32 trueI2 = trueI[i2];
-                if (   recoIsol1 < ISOLATION_CRITICAL
-                    || recoIsol2 < ISOLATION_CRITICAL
-                    || trueI1 < 0 || trueI2 < 0
-                    || static_cast<u32>(trueI1) >= truePt.size()
-                    || static_cast<u32>(trueI2) >= truePt.size())
-                {
-                    foldable = false;
-                }
-                else
-                {
-                    truePt1 = truePt[trueI1];
-                    truePt2 = truePt[trueI2];
-                    f32 trueIsol1 = trueDeltaR[trueI1];
-                    f32 trueIsol2 = trueDeltaR[trueI2];
-                    if (   static_cast<u32>(trueI1) >= trueDeltaR.size()
-                        || static_cast<u32>(trueI2) >= trueDeltaR.size()
-                        || trueIsol1 < ISOLATION_CRITICAL
-                        || trueIsol2 < ISOLATION_CRITICAL)
-                    {
-                        foldable = false;
-                    }
+                if (foldable) {
+                    truePt1 = truePt[trueI[i1]];
+                    truePt2 = truePt[trueI[i2]];
                 }
 
                 return foldedMass(
@@ -204,10 +224,13 @@ void FoldedWmass()
             auto newNode = df.Define(
                 name,
                 foldedWmass,
-                {"jet_pt_NOSYS", "jet_eta", "jet_phi", "jet_e_NOSYS", "particleLevel.jet_pt",
-                 "TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS",
-                 "jet_reco_to_reco_jet_closest_dR_NOSYS", "jet_truth_jet_paired_index",
-                 "jet_truth_to_truth_jet_closest_dR"}
+                {
+                    "jet_pt_NOSYS", "jet_eta", "jet_phi", "jet_e_NOSYS",
+                    "particleLevel.jet_pt",
+                    "TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS",
+                    "jet_truth_jet_paired_index",
+                    "foldable"
+                }
             );
             histos.emplace_back(newNode.Histo1D(name));
         }

@@ -112,10 +112,10 @@ f32 foldedMass(
     f32 recoPt1, const f32 recoEta1, const f32 recoPhi1, const f32 recoE1,
     f32 recoPt2, const f32 recoEta2, const f32 recoPhi2, const f32 recoE2,
     const f32 truePt1, const f32 truePt2,
-    const f32 scale, const f32 resolution,
-    const b8 foldable
+    const f32 scale, const f32 resolution
 ) {
-    if (foldable) {
+    // Apply forward folding if both truePt values are valid.
+    if (truePt1 >= 0 && truePt2 >= 0) {
         recoPt1 = forwardFolding(recoPt1, truePt1, scale, resolution);
         recoPt2 = forwardFolding(recoPt2, truePt2, scale, resolution);
     }
@@ -144,44 +144,47 @@ void FoldedWmass()
         "TtbarLjets_spanet_up_index_NOSYS >= 0 && TtbarLjets_spanet_down_index_NOSYS >= 0"
     );
 
-    auto foldabilityTest = [](
+    auto truePt = [](
         const std::vector<f32>& truePt,
-        const i32 i1, const i32 i2,
+        const i32 index,
         const std::vector<f32>& recoDeltaR,
-        const std::vector<i32>& trueI,
+        const std::vector<i32>& trueIndex,
         const std::vector<f32>& trueDeltaR
     ) {
-        f32 recoIsol1 = recoDeltaR[i1];
-        f32 recoIsol2 = recoDeltaR[i2];
-        i32 trueI1 = trueI[i1];
-        i32 trueI2 = trueI[i2];
-        if (   recoIsol1 < ISOLATION_CRITICAL
-            || recoIsol2 < ISOLATION_CRITICAL
-            || trueI1 < 0 || trueI2 < 0
-            || static_cast<u32>(trueI1) >= truePt.size()
-            || static_cast<u32>(trueI2) >= truePt.size())
+        i32 trueI1 = trueIndex[index];
+        if (   recoDeltaR[index] < ISOLATION_CRITICAL
+            || trueI1 < 0
+            || static_cast<u32>(trueI1) >= truePt.size())
         {
-            return false;
+            return -1.0f;
         }
 
         f32 trueIsol1 = trueDeltaR[trueI1];
-        f32 trueIsol2 = trueDeltaR[trueI2];
         if (   static_cast<u32>(trueI1) >= trueDeltaR.size()
-            || static_cast<u32>(trueI2) >= trueDeltaR.size()
-            || trueIsol1 < ISOLATION_CRITICAL
-            || trueIsol2 < ISOLATION_CRITICAL)
+            || trueIsol1 < ISOLATION_CRITICAL)
         {
-            return false;
+            return -1.0f;
         }
 
-        return true;
+        return truePt[trueI1];
     };
+
     df = df.Define(
-        "foldable",
-        foldabilityTest,
+        "truePt1",
+        truePt,
         {
             "particleLevel.jet_pt",
-            "TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS",
+            "TtbarLjets_spanet_up_index_NOSYS",
+            "jet_reco_to_reco_jet_closest_dR_NOSYS",
+            "jet_truth_jet_paired_index",
+            "jet_truth_to_truth_jet_closest_dR"
+        }
+    ).Define(
+        "truePt2",
+        truePt,
+        {
+            "particleLevel.jet_pt",
+            "TtbarLjets_spanet_down_index_NOSYS",
             "jet_reco_to_reco_jet_closest_dR_NOSYS",
             "jet_truth_jet_paired_index",
             "jet_truth_to_truth_jet_closest_dR"
@@ -198,25 +201,14 @@ void FoldedWmass()
                 const std::vector<f32>& recoEta,
                 const std::vector<f32>& recoPhi,
                 const std::vector<f32>& recoE,
-                const std::vector<f32>& truePt,
                 const i32 i1, const i32 i2,
-                const std::vector<i32>& trueI,
-                const b8 foldable
+                const f32 truePt1, const f32 truePt2
             ) {
-                f32 truePt1;
-                f32 truePt2;
-
-                if (foldable) {
-                    truePt1 = truePt[trueI[i1]];
-                    truePt2 = truePt[trueI[i2]];
-                }
-
                 return foldedMass(
                     recoPt[i1], recoEta[i1], recoPhi[i1], recoE[i1],
                     recoPt[i2], recoEta[i2], recoPhi[i2], recoE[i2],
                     truePt1, truePt2,
-                    scale, resolution,
-                    foldable
+                    scale, resolution
                 );
             };
 
@@ -226,10 +218,8 @@ void FoldedWmass()
                 foldedWmass,
                 {
                     "jet_pt_NOSYS", "jet_eta", "jet_phi", "jet_e_NOSYS",
-                    "particleLevel.jet_pt",
                     "TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS",
-                    "jet_truth_jet_paired_index",
-                    "foldable"
+                    "truePt1", "truePt2"
                 }
             );
             histos.emplace_back(newNode.Histo1D(name));

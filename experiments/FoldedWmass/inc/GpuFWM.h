@@ -2,6 +2,7 @@
 #define GPUFWM_H
 
 #include "types.h"
+#include "timer.h"
 
 typedef struct
 {
@@ -26,13 +27,20 @@ protected:
 
     DefCoords *d_defCoords;
 
+    Timer<> *rtTransfer;
+    Timer<> *rtKernel;
+    Timer<> *rtResult;
+
 public:
     GpuFWM() = delete;
     GpuFWM(
         usize nBins,
         f32 xMin, f32 xMax,
         f32 *scales, usize nScales,
-        f32 *resolutions, usize nResolutions
+        f32 *resolutions, usize nResolutions,
+        Timer<> *rtSetup = nullptr,
+        Timer<> *rtKernel = nullptr,
+        Timer<> *rtResult = nullptr
     );
     ~GpuFWM();
 

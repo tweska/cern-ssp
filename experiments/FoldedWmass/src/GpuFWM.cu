@@ -2,7 +2,6 @@
 
 #include "GpuFWM.h"
 
-
 #define ISOLATION_CRITICAL 0.5
 
 __device__
@@ -180,15 +179,14 @@ GpuFWM<BlockSize, MaxBulkSize>::GpuFWM(
     usize nBins,
     f32 xMin, f32 xMax,
     f32 *scales, usize nScales,
-    f32 *resolutions, usize nResolutions
+    f32 *resolutions, usize nResolutions,
+    Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult
 ) {
     this->nBins = nBins + 2;
     this->xMin = xMin;
     this->xMax = xMax;
     this->nScales = nScales;
     this->nResolutions = nResolutions;
-
-    std::cout << "Allocating: " << sizeof(f64) * nScales * nResolutions * this->nBins << " bytes!" << std::endl;
 
     ERRCHECK(cudaMalloc(&d_histos, sizeof(f64) * nScales * nResolutions * this->nBins));
     ERRCHECK(cudaMalloc(&d_scales, sizeof(f32) * nScales));
@@ -198,6 +196,10 @@ GpuFWM<BlockSize, MaxBulkSize>::GpuFWM(
     ERRCHECK(cudaMemcpy(d_scales, scales, sizeof(f32) * nScales, cudaMemcpyHostToDevice));
     ERRCHECK(cudaMemcpy(d_resolutions, resolutions, sizeof(f32) * nResolutions, cudaMemcpyHostToDevice));
     ERRCHECK(cudaDeviceSynchronize());
+
+    this->rtTransfer = rtTransfer;
+    this->rtKernel = rtKernel;
+    this->rtResult = rtResult;
 }
 
 template <usize BlockSize, usize MaxBulkSize>
@@ -212,17 +214,19 @@ GpuFWM<BlockSize, MaxBulkSize>::~GpuFWM()
 template <usize BlockSize, usize MaxBulkSize>
 void GpuFWM<BlockSize, MaxBulkSize>::RetrieveResult(const usize i, f64 *histograms)
 {
+    if (rtResult) rtResult->start();
     ERRCHECK(cudaMemcpy(histograms, d_histos + i * nBins, sizeof(f64) * nBins, cudaMemcpyDeviceToHost));
     ERRCHECK(cudaDeviceSynchronize());
+    if (rtResult) rtResult->pause();
 }
 
 template <usize BlockSize, usize MaxBulkSize>
 void GpuFWM<BlockSize, MaxBulkSize>::RetrieveResults(f64 *histograms)
 {
-    std::cout << "Retrieving: " << sizeof(f64) * nScales * nResolutions * nBins << " bytes!" << std::endl;
-
+    if (rtResult) rtResult->start();
     ERRCHECK(cudaMemcpy(histograms, d_histos, sizeof(f64) * nScales * nResolutions * nBins, cudaMemcpyDeviceToHost));
     ERRCHECK(cudaDeviceSynchronize());
+    if (rtResult) rtResult->pause();
 }
 
 template <usize BlockSize, usize MaxBulkSize>
@@ -230,9 +234,12 @@ void GpuFWM<BlockSize, MaxBulkSize>::FillN(const usize n, const DefCoords *defCo
 {
     assert(n <= MaxBulkSize);
 
+    if (rtTransfer) rtTransfer->start();
     ERRCHECK(cudaMemcpy(d_defCoords, defCoords, sizeof(DefCoords) * n, cudaMemcpyHostToDevice));
     ERRCHECK(cudaDeviceSynchronize());
+    if (rtTransfer) rtTransfer->pause();
 
+    if (rtKernel) rtKernel->start();
     usize numBlocks = n % BlockSize == 0 ? n / BlockSize : n / BlockSize + 1;
     FillKernel<<<numBlocks, BlockSize>>>(
         d_histos, nBins,
@@ -243,6 +250,7 @@ void GpuFWM<BlockSize, MaxBulkSize>::FillN(const usize n, const DefCoords *defCo
     );
     ERRCHECK(cudaDeviceSynchronize());
     ERRCHECK(cudaPeekAtLastError());
+    if (rtKernel) rtKernel->pause();
 }
 
 template class GpuFWM<256, 32768>;

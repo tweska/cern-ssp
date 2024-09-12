@@ -2,19 +2,20 @@
 
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDFHelpers.hxx>
-#include <TTreePerfStats.h>
 
 #include "types.h"
+#include "timer.h"
 
 #include "GpuFWM.h"
 
 #define ISOLATION_CRITICAL 0.5
 #define MAX_BULK_SIZE 32768
 #define NBINS 100
-#define XMIN 0
-#define XMAX 400
+#define XMIN    0
+#define XMAX  400
+#define RUNS   10
 
-void FoldedWmass()
+void FoldedWmass(Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult)
 {
     TChain* chainReco = new TChain("reco");
     TChain* chainTruth = new TChain("particleLevel");
@@ -23,7 +24,6 @@ void FoldedWmass()
     chainTruth->AddFile("data/output.root");
     chainTruth->BuildIndex("eventNumber");
     chainReco->AddFriend(chainTruth);
-    auto treeStats = new TTreePerfStats("ioperf", chainReco);
 
     auto df = ROOT::RDataFrame(*chainReco).Filter(
         "TtbarLjets_spanet_up_index_NOSYS >= 0 && TtbarLjets_spanet_down_index_NOSYS >= 0"
@@ -79,7 +79,8 @@ void FoldedWmass()
     f32 scales[100], resolutions[100];
     for (i32 i = 0; i < 100; ++i) { scales[i] = 0.9 + i * 0.01; }
     for (i32 i = 0; i < 100; ++i) { resolutions[i] = 0.8 + i * 0.02; }
-    auto gpuFWM = GpuFWM<256, MAX_BULK_SIZE>(NBINS, XMIN, XMAX, scales, 100, resolutions, 100);
+    auto gpuFWM = GpuFWM<256, MAX_BULK_SIZE>(NBINS, XMIN, XMAX, scales, 100, resolutions, 100,
+                                             rtTransfer, rtKernel, rtResult);
 
     usize i = 0;
     DefCoords *defCoords = new DefCoords[MAX_BULK_SIZE];
@@ -117,14 +118,19 @@ void FoldedWmass()
     f64 *histoValues = new f64[10000 * (NBINS + 2)];
     gpuFWM.RetrieveResults(histoValues);
 
-    treeStats->Print();
-
     delete[] histoValues;
     delete[] defCoords;
 }
 
 i32 main()
 {
-    FoldedWmass();
+    Timer<> rtsTransfer[RUNS], rtsKernel[RUNS], rtsResult[RUNS];
+    for (auto i = 0; i < RUNS; ++i) {
+        FoldedWmass(&rtsTransfer[i], &rtsKernel[i], &rtsResult[i]);
+    }
+    std::cerr << "Transfer      "; printTimerMinMaxAvg(rtsTransfer, RUNS);
+    std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsKernel, RUNS);
+    std::cerr << "Result        "; printTimerMinMaxAvg(rtsResult, RUNS);
+
     return 0;
 }

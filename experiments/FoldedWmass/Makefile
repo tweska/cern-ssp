@@ -9,10 +9,7 @@ CUDA_COMPILER = nvcc
 CUDA_FLAGS    = -arch=sm_75 -g -G -Iinc -I../../inc
 CUDA_LIBS     = -lcuda -lcudart
 
-SOURCE_FILES  = $(wildcard src/*.cpp) $(wildcard src/*.cu)
-OBJECT_FILES  = $(patsubst src/%.cpp, obj/%.cpp.o, $(patsubst src/%.cu, obj/%.cu.o, $(SOURCE_FILES)))
-
-TARGETS       = bin/CpuFWM bin/GpuFWM
+TARGETS       = bin/CpuFWMOriginal bin/CpuFWM bin/GpuFWM
 
 all: $(TARGETS)
 
@@ -24,20 +21,20 @@ obj/%.cu.o: src/%.cu
 	@mkdir -p obj
 	$(CUDA_COMPILER) -c $< -o $@ $(CUDA_FLAGS)
 
-bin/CpuFWM: CpuFWM.cpp
+bin/CpuFWMOriginal: CpuFWMOriginal.cpp obj/CpuFWM.cpp.o
 	@mkdir -p bin
 	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
 
-bin/%: %.cpp $(OBJECT_FILES)
+bin/CpuFWM: CpuFWM.cpp obj/CpuFWM.cpp.o
 	@mkdir -p bin
 	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
 
-data/Run2012BC_DoubleMuParked_Muons.root:
-	@mkdir -p data
-	wget https://opendata.web.cern.ch/record/12341/files/Run2012BC_DoubleMuParked_Muons.root -O data/Run2012BC_DoubleMuParked_Muons.root
+bin/GpuFWM: GpuFWM.cpp obj/GpuFWM.cu.o
+	@mkdir -p bin
+	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
 
 clean:
 	rm -rf bin/ obj/
 
 .PHONY: all clean
-.PRECIOUS: $(OBJECT_FILES)
+.PRECIOUS: obj/*

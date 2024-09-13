@@ -1,4 +1,4 @@
-#include <CUDAHelpers.cuh>
+#include "CUDAHelpers.cuh"
 
 #include "GpuFWM.h"
 
@@ -11,7 +11,7 @@ inline void AddBinContent(f64 *histogram, usize bin)
 }
 
 __device__
-inline usize FindBin(f32 x, usize nBins, f32 xMin, f32 xMax)
+inline usize FindBin(f64 x, usize nBins, f64 xMin, f64 xMax)
 {
     if (x < xMin)
         return 0;
@@ -32,12 +32,12 @@ inline f32 angle(
     const f32 cz = x1 * y2 - x2 * y1;
 
     // norm of cross product
-    const f32 c = std::sqrt(cx * cx + cy * cy + cz * cz);
+    const f32 c = sqrt(cx * cx + cy * cy + cz * cz);
 
     // dot product
     const f32 d = x1 * x2 + y1 * y2 + z1 * z2;
 
-    return std::atan2(c, d);
+    return atan2(c, d);
 }
 
 __device__
@@ -52,14 +52,14 @@ inline f32 invariantMassPxPyPzM(
     if (pp1 <= 0 && pp2 <= 0)
         return (mass1 + mass2);
     if (pp1 <= 0) {
-        f32 mm = mass1 + std::sqrt(mass2*mass2 + pp2);
+        f32 mm = mass1 + sqrt(mass2*mass2 + pp2);
         f32 m2 = mm*mm - pp2;
-        return m2 >= 0 ? std::sqrt(m2) : std::sqrt(-m2);
+        return m2 >= 0 ? sqrt(m2) : sqrt(-m2);
     }
     if (pp2 <= 0) {
-        f32 mm = mass2 + std::sqrt(mass1*mass1 + pp1);
+        f32 mm = mass2 + sqrt(mass1*mass1 + pp1);
         f32 m2 = mm*mm - pp1;
-        return m2 >= 0 ? std::sqrt(m2) : std::sqrt(-m2);
+        return m2 >= 0 ? sqrt(m2) : sqrt(-m2);
     }
 
     const f32 mm1 =  mass1 * mass1;
@@ -69,18 +69,18 @@ inline f32 invariantMassPxPyPzM(
     const f32 r2 = mm2 / pp2;
     const f32 x = r1 + r2 + r1 * r2;
     const f32 a = angle(x1, y1, z1, x2, y2, z2);
-    const f32 cos_a = std::cos(a);
+    const f32 cos_a = cos(a);
     f32 y;
     if (cos_a >= 0){
-        y = (x + std::sin(a) * std::sin(a)) / (std::sqrt(x + 1) + cos_a);
+        y = (x + sin(a) * sin(a)) / (sqrt(x + 1) + cos_a);
     } else {
-        y = std::sqrt(x + 1) - cos_a;
+        y = sqrt(x + 1) - cos_a;
     }
 
-    const f32 z = 2.0f * std::sqrt(pp1 * pp2);
+    const f32 z = 2.0f * sqrt(pp1 * pp2);
 
     // Return invariant mass with (+, -, -, -) metric
-    return std::sqrt(mm1 + mm2 + y * z);
+    return sqrt(mm1 + mm2 + y * z);
 }
 
 __device__
@@ -94,8 +94,8 @@ inline f32 invariantMassPxPyPzE(
     const f32 mm1 = e1 * e1 - pp1;
     const f32 mm2 = e2 * e2 - pp2;
 
-    const f32 mass1 = (mm1 >= 0) ? std::sqrt(mm1) : 0;
-    const f32 mass2 = (mm2 >= 0) ? std::sqrt(mm2) : 0;
+    const f32 mass1 = (mm1 >= 0) ? sqrt(mm1) : 0;
+    const f32 mass2 = (mm2 >= 0) ? sqrt(mm2) : 0;
 
     return invariantMassPxPyPzM(x1, y1, z1, mass1, x2, y2, z2, mass2);
 }
@@ -105,13 +105,13 @@ inline f32 invariantMassPtEtaPhiE(
     const f32 pt1, const f32 eta1, const f32 phi1, const f32 e1,
     const f32 pt2, const f32 eta2, const f32 phi2, const f32 e2
 ) {
-    const f32 x1 = pt1 * std::cos(phi1);
-    const f32 y1 = pt1 * std::sin(phi1);
-    const f32 z1 = pt1 * std::sinh(eta1);
+    const f32 x1 = pt1 * cos(phi1);
+    const f32 y1 = pt1 * sin(phi1);
+    const f32 z1 = pt1 * sinh(eta1);
 
-    const f32 x2 = pt2 * std::cos(phi2);
-    const f32 y2 = pt2 * std::sin(phi2);
-    const f32 z2 = pt2 * std::sinh(eta2);
+    const f32 x2 = pt2 * cos(phi2);
+    const f32 y2 = pt2 * sin(phi2);
+    const f32 z2 = pt2 * sinh(eta2);
 
     return invariantMassPxPyPzE(x1, y1, z1, e1, x2, y2, z2, e2);
 }

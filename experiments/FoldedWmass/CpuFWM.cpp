@@ -1,4 +1,5 @@
 #include <vector>
+#include <thread>
 
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDFHelpers.hxx>
@@ -6,11 +7,9 @@
 
 #include "types.h"
 #include "timer.h"
-#include "CpuFWM.h"
-
-#include <thread>
 
 #include "coords.h"
+#include "CpuFWM.h"
 
 #define ISOLATION_CRITICAL 0.5
 #define NBINS 100
@@ -18,7 +17,7 @@
 #define XMAX 400
 #define THREADS 16
 #define BATCH_SIZE (2048 * THREADS)
-#define RUNS 10
+#define RUNS 1
 
 void bulkThread(const DefCoords *defCoords, TH1D **histo, const usize n, const usize tid) {
     const usize start = BATCH_SIZE / THREADS * tid;
@@ -55,7 +54,7 @@ void processBulk(DefCoords *defCoords, std::vector<TH1D*> histos, usize n) {
     }
 }
 
-void FoldedWmass(Timer<> *timer)
+void FoldedWmass(Timer<> *timer, b8 print = false)
 {
     TChain* chainReco = new TChain("reco");
     TChain* chainTruth = new TChain("particleLevel");
@@ -162,14 +161,14 @@ void FoldedWmass(Timer<> *timer)
 
     // Process the last batch!
     if (i != 0) {
-        timer->start();
+        if (timer) timer->start();
         processBulk(defCoords, histos, i);
-        timer->pause();
+        if (timer) timer->pause();
     }
 
     std::vector<TH1D*> mergedHistos;
     mergedHistos.reserve(10000);
-    timer->start();
+    if (timer) timer->start();
     for (i32 s = 0; s < 100; ++s) {
         for (i32 r = 0; r < 100; ++r) {
             TH1D *mergedHisto = new TH1D(
@@ -189,18 +188,35 @@ void FoldedWmass(Timer<> *timer)
     for (usize i = 0; i < 10000; ++i) {
         results[i] = mergedHistos[i]->GetArray();
     }
-    timer->pause();
+    if (timer) timer->pause();
 
-    histos.clear();
-    mergedHistos.clear();
+    if (print) {
+        for (int s = 0; s < 100; ++s) {
+            for (int r = 0; r < 100; ++r) {
+                std::cout << "r=" << std::setw(2) << r << " s=" << std::setw(2) << s << " : ";
+                printArray(results[r * 100 + s], NBINS + 2);
+            }
+        }
+    }
 
     delete[] results;
     delete[] defCoords;
 }
 
-i32 main()
+i32 main(i32 argc, c8 *argv[])
 {
     TH1::AddDirectory(false);
+
+    b8 warmupFlag = false;
+    b8 printFlag = false;
+    for (i32 i = 0; i < argc; ++i) {
+        if (strcmp(argv[i], "--warmup") == 0) { warmupFlag = true; }
+        if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
+    }
+
+    if (warmupFlag || printFlag) {
+        FoldedWmass(nullptr, printFlag);
+    }
 
     Timer<> timer[RUNS];
     for (auto i = 0; i < RUNS; ++i) {

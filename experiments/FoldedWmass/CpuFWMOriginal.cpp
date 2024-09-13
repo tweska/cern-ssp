@@ -5,6 +5,7 @@
 #include <TTreePerfStats.h>
 
 #include "types.h"
+#include "util.h"
 #include "CpuFWM.h"
 
 #define ISOLATION_CRITICAL 0.5
@@ -13,7 +14,7 @@
 #define XMIN    0
 #define XMAX  400
 
-void FoldedWmass()
+void FoldedWmass(b8 print = false)
 {
     ROOT::EnableImplicitMT();
 
@@ -24,7 +25,6 @@ void FoldedWmass()
     chainTruth->AddFile("data/output.root");
     chainTruth->BuildIndex("eventNumber");
     chainReco->AddFriend(chainTruth);
-    auto treeStats = new TTreePerfStats("ioperf", chainReco);
 
     auto df = ROOT::RDataFrame(*chainReco).Filter(
         "TtbarLjets_spanet_up_index_NOSYS >= 0 && TtbarLjets_spanet_down_index_NOSYS >= 0"
@@ -113,11 +113,23 @@ void FoldedWmass()
     }
     RunGraphs(histos);
 
-    treeStats->Print();
+    if (print) {
+        for (int s = 0; s < 100; ++s) {
+            for (int r = 0; r < 100; ++r) {
+                std::cout << "r=" << std::setw(2) << r << " s=" << std::setw(2) << s << " : ";
+                printArray(histos[r * 100 + s].GetPtr<TH1D>()->GetArray(), NBINS + 2);
+            }
+        }
+    }
 }
 
-i32 main()
+i32 main(i32 argc, c8 *argv[])
 {
-    FoldedWmass();
+    b8 printFlag = false;
+    for (i32 i = 0; i < argc; ++i) {
+        if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
+    }
+
+    FoldedWmass(printFlag);
     return 0;
 }

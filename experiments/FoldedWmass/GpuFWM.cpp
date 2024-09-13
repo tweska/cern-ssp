@@ -1,12 +1,19 @@
+#include <cstring>
 #include <vector>
+#include <iostream>
+#include <iomanip>
 
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDFHelpers.hxx>
 
 #include "types.h"
 #include "timer.h"
+#include "util.h"
 
+#include "coords.h"
 #include "GpuFWM.h"
+
+
 
 #define ISOLATION_CRITICAL 0.5
 #define MAX_BULK_SIZE 32768
@@ -15,7 +22,7 @@
 #define XMAX  400
 #define RUNS   10
 
-void FoldedWmass(Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult)
+void FoldedWmass(Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult, b8 print = false)
 {
     TChain* chainReco = new TChain("reco");
     TChain* chainTruth = new TChain("particleLevel");
@@ -118,12 +125,32 @@ void FoldedWmass(Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult)
     f64 *histoValues = new f64[10000 * (NBINS + 2)];
     gpuFWM.RetrieveResults(histoValues);
 
+    if (print) {
+        for (int s = 0; s < 100; ++s) {
+            for (int r = 0; r < 100; ++r) {
+                std::cout << "r=" << std::setw(2) << r << " s=" << std::setw(2) << s << " : ";
+                printArray(&histoValues[(r * 100 + s) * (NBINS + 2)], NBINS + 2);
+            }
+        }
+    }
+
     delete[] histoValues;
     delete[] defCoords;
 }
 
-i32 main()
+i32 main(i32 argc, c8 *argv[])
 {
+    b8 warmupFlag = false;
+    b8 printFlag = false;
+    for (i32 i = 0; i < argc; ++i) {
+        if (strcmp(argv[i], "--warmup") == 0) { warmupFlag = true; }
+        if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
+    }
+
+    if (warmupFlag || printFlag) {
+        FoldedWmass(nullptr, nullptr, nullptr, printFlag);
+    }
+
     Timer<> rtsTransfer[RUNS], rtsKernel[RUNS], rtsResult[RUNS];
     for (auto i = 0; i < RUNS; ++i) {
         FoldedWmass(&rtsTransfer[i], &rtsKernel[i], &rtsResult[i]);
@@ -131,6 +158,12 @@ i32 main()
     std::cerr << "Transfer      "; printTimerMinMaxAvg(rtsTransfer, RUNS);
     std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsKernel, RUNS);
     std::cerr << "Result        "; printTimerMinMaxAvg(rtsResult, RUNS);
+
+    Timer<> rtsTotal[RUNS];
+    for (auto i = 0; i < RUNS; ++i) {
+        rtsTotal[i] = rtsTransfer[i] + rtsKernel[i] + rtsResult[i];
+    }
+    std::cerr << "Total         "; printTimerMinMaxAvg(rtsTotal, RUNS);
 
     return 0;
 }

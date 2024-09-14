@@ -25,11 +25,11 @@ bin/CpuFWMOriginal: CpuFWMOriginal.cpp obj/CpuFWM.cpp.o
 	@mkdir -p bin
 	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS)
 
-bin/CpuFWM: CpuFWM.cpp obj/CpuFWM.cpp.o
+bin/CpuFWM: CpuFWM.cpp obj/CpuFWM.cpp.o obj/coords.cpp.o
 	@mkdir -p bin
 	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS)
 
-bin/GpuFWM: GpuFWM.cpp obj/GpuFWM.cu.o
+bin/GpuFWM: GpuFWM.cpp obj/GpuFWM.cu.o obj/coords.cpp.o
 	@mkdir -p bin
 	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
 

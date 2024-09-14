@@ -3,7 +3,6 @@
 
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDFHelpers.hxx>
-#include <TTreePerfStats.h>
 
 #include "types.h"
 #include "timer.h"
@@ -11,12 +10,12 @@
 #include "coords.h"
 #include "CpuFWM.h"
 
-#define ISOLATION_CRITICAL 0.5
 #define NBINS 100
 #define XMIN 0
 #define XMAX 400
 #define THREADS 16
-#define BATCH_SIZE (2048 * THREADS)
+#define INPUT_SIZE 2062
+#define BATCH_SIZE (128 * THREADS)
 #define RUNS 1
 
 void bulkThread(const DefCoords *defCoords, TH1D **histo, const usize n, const usize tid) {
@@ -54,67 +53,8 @@ void processBulk(DefCoords *defCoords, std::vector<TH1D*> histos, usize n) {
     }
 }
 
-void FoldedWmass(Timer<> *timer, b8 print = false)
+void FoldedWmass(DefCoords *defCoords, Timer<> *timer, b8 print = false)
 {
-    TChain* chainReco = new TChain("reco");
-    TChain* chainTruth = new TChain("particleLevel");
-
-    chainReco->AddFile("data/output.root");
-    chainTruth->AddFile("data/output.root");
-    chainTruth->BuildIndex("eventNumber");
-    chainReco->AddFriend(chainTruth);
-
-    auto df = ROOT::RDataFrame(*chainReco).Filter(
-        "TtbarLjets_spanet_up_index_NOSYS >= 0 && TtbarLjets_spanet_down_index_NOSYS >= 0"
-    );
-
-    auto truePt = [](
-        const std::vector<f32>& truePt,
-        const i32 index,
-        const std::vector<f32>& recoDeltaR,
-        const std::vector<i32>& trueIndex,
-        const std::vector<f32>& trueDeltaR
-    ) {
-        i32 trueI1 = trueIndex[index];
-        if (   recoDeltaR[index] < ISOLATION_CRITICAL
-            || trueI1 < 0
-            || static_cast<u32>(trueI1) >= truePt.size())
-        {
-            return -1.0f;
-        }
-
-        f32 trueIsol1 = trueDeltaR[trueI1];
-        if (   static_cast<u32>(trueI1) >= trueDeltaR.size()
-            || trueIsol1 < ISOLATION_CRITICAL)
-        {
-            return -1.0f;
-        }
-
-        return truePt[trueI1];
-    };
-
-    df = df.Define(
-        "truePt1",
-        truePt,
-        {
-            "particleLevel.jet_pt",
-            "TtbarLjets_spanet_up_index_NOSYS",
-            "jet_reco_to_reco_jet_closest_dR_NOSYS",
-            "jet_truth_jet_paired_index",
-            "jet_truth_to_truth_jet_closest_dR"
-        }
-    ).Define(
-        "truePt2",
-        truePt,
-        {
-            "particleLevel.jet_pt",
-            "TtbarLjets_spanet_down_index_NOSYS",
-            "jet_reco_to_reco_jet_closest_dR_NOSYS",
-            "jet_truth_jet_paired_index",
-            "jet_truth_to_truth_jet_closest_dR"
-        }
-    );
-
     std::vector<TH1D*> histos;
     histos.reserve(10000 * THREADS);
     for (usize tid = 0; tid < THREADS; ++tid) {
@@ -129,40 +69,11 @@ void FoldedWmass(Timer<> *timer, b8 print = false)
         }
     }
 
-    usize i = 0;
-    DefCoords *defCoords = new DefCoords[BATCH_SIZE];
-    df.Foreach(
-        [&i, defCoords, histos, timer] (
-        const std::vector<f32>& recoPt,
-        const std::vector<f32>& recoEta,
-        const std::vector<f32>& recoPhi,
-        const std::vector<f32>& recoE,
-        const i32 i1, const i32 i2,
-        const f32 truePt1, const f32 truePt2
-    ) {
-        defCoords[i] = {
-            recoPt[i1], recoEta[i1], recoPhi[i1], recoE[i1],
-            recoPt[i2], recoEta[i2], recoPhi[i2], recoE[i2],
-            truePt1, truePt2
-        };
-
-        if (++i == BATCH_SIZE) {
-            timer->start();
-            processBulk(defCoords, histos, BATCH_SIZE);
-            timer->pause();
-            i = 0;
-        }
-    },
-    {
-        "jet_pt_NOSYS", "jet_eta", "jet_phi", "jet_e_NOSYS",
-        "TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS",
-        "truePt1", "truePt2"
-    });
-
-    // Process the last batch!
-    if (i != 0) {
+    // Process the batches.
+    for (usize i = 0; i < INPUT_SIZE; i += BATCH_SIZE) {
+        const usize n = std::min<usize>(BATCH_SIZE, INPUT_SIZE - i);
         if (timer) timer->start();
-        processBulk(defCoords, histos, i);
+        processBulk(&defCoords[i], histos, n);
         if (timer) timer->pause();
     }
 
@@ -200,7 +111,6 @@ void FoldedWmass(Timer<> *timer, b8 print = false)
     }
 
     delete[] results;
-    delete[] defCoords;
 }
 
 i32 main(i32 argc, c8 *argv[])
@@ -214,15 +124,19 @@ i32 main(i32 argc, c8 *argv[])
         if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
     }
 
+    DefCoords *defCoords = new DefCoords[INPUT_SIZE];
+    getCoords(defCoords, INPUT_SIZE);
+
     if (warmupFlag || printFlag) {
-        FoldedWmass(nullptr, printFlag);
+        FoldedWmass(defCoords, nullptr, printFlag);
     }
 
     Timer<> timer[RUNS];
     for (auto i = 0; i < RUNS; ++i) {
-        FoldedWmass(&timer[i]);
+        FoldedWmass(defCoords, &timer[i]);
     }
     std::cerr << "Define + Fill "; printTimerMinMaxAvg(timer, RUNS);
 
+    delete[] defCoords;
     return 0;
 }

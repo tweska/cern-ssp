@@ -23,11 +23,11 @@ obj/%.cu.o: src/%.cu
 
 bin/CpuFWMOriginal: CpuFWMOriginal.cpp obj/CpuFWM.cpp.o
 	@mkdir -p bin
-	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
+	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS)
 
 bin/CpuFWM: CpuFWM.cpp obj/CpuFWM.cpp.o
 	@mkdir -p bin
-	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
+	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS)
 
 bin/GpuFWM: GpuFWM.cpp obj/GpuFWM.cu.o
 	@mkdir -p bin
@@ -37,4 +37,3 @@ clean:
 	rm -rf bin/ obj/
 
 .PHONY: all clean
-.PRECIOUS: obj/*

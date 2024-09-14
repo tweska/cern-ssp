@@ -27,10 +27,10 @@ void bulkThread(const DefCoords *defCoords, TH1D **histo, const usize n, const u
         const DefCoords dc = defCoords[k];
         for (i32 s = 0; s < 100; ++s) {
             for (i32 r = 0; r < 100; ++r) {
-                const f32 scale = 0.9 + s*0.01;
-                const f32 resolution = 0.8 + r*0.02;
+                const f32 scale = 0.9f + static_cast<f32>(s) * 0.01f;
+                const f32 resolution = 0.8f + static_cast<f32>(r) * 0.02f;
 
-                const f32 mass = foldedMass(
+                const f64 mass = foldedMass(
                     dc.recoPt1, dc.recoEta1, dc.recoPhi1, dc.recoE1,
                     dc.recoPt2, dc.recoEta2, dc.recoPhi2, dc.recoE2,
                     dc.truePt1, dc.truePt2,

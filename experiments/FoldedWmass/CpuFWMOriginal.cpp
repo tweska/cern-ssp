@@ -80,8 +80,8 @@ void FoldedWmass(b8 print = false)
     std::vector<ROOT::RDF::RResultHandle> histos;
     for (i32 s = 0; s < 100; ++s) {
         for (i32 r = 0; r < 100; ++r) {
-            const f32 scale = 0.9 + s*0.01;
-            const f32 resolution = 0.8 + r*0.02;
+            const f32 scale = 0.9f + static_cast<f32>(s) * 0.01f;
+            const f32 resolution = 0.8f + static_cast<f32>(r) * 0.02f;
             auto foldedWmass = [scale,resolution](
                 const std::vector<f32>& recoPt,
                 const std::vector<f32>& recoEta,
@@ -90,12 +90,12 @@ void FoldedWmass(b8 print = false)
                 const i32 i1, const i32 i2,
                 const f32 truePt1, const f32 truePt2
             ) {
-                return foldedMass(
+                return static_cast<f64>(foldedMass(
                     recoPt[i1], recoEta[i1], recoPhi[i1], recoE[i1],
                     recoPt[i2], recoEta[i2], recoPhi[i2], recoE[i2],
                     truePt1, truePt2,
                     scale, resolution
-                );
+                ));
             };
 
             const std::string name = "folded_w_mass_GeV_s_" + std::to_string(s) + "_r_" + std::to_string(r) + "_isolation_0p5_NOSYS";

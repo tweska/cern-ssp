@@ -13,14 +13,12 @@
 #include "coords.h"
 #include "GpuFWM.h"
 
-
-
 #define ISOLATION_CRITICAL 0.5
 #define MAX_BULK_SIZE 32768
 #define NBINS 100
-#define XMIN    0
-#define XMAX  400
-#define RUNS   10
+#define XMIN 0
+#define XMAX 400
+#define RUNS 10
 
 void FoldedWmass(Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult, b8 print = false)
 {
@@ -84,10 +82,13 @@ void FoldedWmass(Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult, b8 p
     );
 
     f32 scales[100], resolutions[100];
-    for (i32 i = 0; i < 100; ++i) { scales[i] = 0.9 + i * 0.01; }
-    for (i32 i = 0; i < 100; ++i) { resolutions[i] = 0.8 + i * 0.02; }
-    auto gpuFWM = GpuFWM<256, MAX_BULK_SIZE>(NBINS, XMIN, XMAX, scales, 100, resolutions, 100,
-                                             rtTransfer, rtKernel, rtResult);
+    for (i32 s = 0; s < 100; ++s) { scales[s] = 0.9f + static_cast<f32>(s) * 0.01f; }
+    for (i32 r = 0; r < 100; ++r) { resolutions[r] = 0.8f + static_cast<f32>(r) * 0.02f; }
+    auto gpuFWM = GpuFWM(
+        NBINS, XMIN, XMAX,
+        scales, 100, resolutions, 100,
+        rtTransfer, rtKernel, rtResult
+    );
 
     usize i = 0;
     DefCoords *defCoords = new DefCoords[MAX_BULK_SIZE];

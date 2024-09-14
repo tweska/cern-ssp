@@ -5,20 +5,20 @@
 #define ISOLATION_CRITICAL 0.5
 
 __device__
-inline void AddBinContent(f64 *histogram, usize bin)
+inline void AddBinContent(f64 *histogram, const usize bin)
 {
     atomicAdd(&histogram[bin], 1.0f);
 }
 
 __device__
-inline usize FindBin(f64 x, usize nBins, f64 xMin, f64 xMax)
+inline usize FindBin(const f64 x, const usize nBins, const f64 xMin, const f64 xMax)
 {
     if (x < xMin)
         return 0;
     if (!(x < xMax))
         return nBins - 1;
 
-    return 1 + usize((nBins - 2) * (x - xMin) / (xMax - xMin));
+    return 1 + static_cast<usize>((nBins - 2) * (x - xMin) / (xMax - xMin));
 }
 
 __device__
@@ -149,7 +149,7 @@ f32 foldedMass(
 __global__
 void FillKernel(
     f64 *histos, const usize nBins,
-    const f32 xMin, const f32 xMax,
+    const f64 xMin, const f64 xMax,
     const f32 *scales, const usize nScales,
     const f32 *resolutions, const usize nResolutions,
     const DefCoords *defCoords, const usize bulkSize
@@ -161,7 +161,7 @@ void FillKernel(
         const DefCoords cur = defCoords[k];
         for (usize i = 0; i < nScales; ++i) {
             for (usize j = 0; j < nResolutions; ++j) {
-                const f32 mass = foldedMass(
+                const f64 mass = foldedMass(
                     cur.recoPt1, cur.recoEta1, cur.recoPhi1, cur.recoE1,
                     cur.recoPt2, cur.recoEta2, cur.recoPhi2, cur.recoE2,
                     cur.truePt1, cur.truePt2,
@@ -177,7 +177,7 @@ void FillKernel(
 template <usize BlockSize, usize MaxBulkSize>
 GpuFWM<BlockSize, MaxBulkSize>::GpuFWM(
     usize nBins,
-    f32 xMin, f32 xMax,
+    f64 xMin, f64 xMax,
     f32 *scales, usize nScales,
     f32 *resolutions, usize nResolutions,
     Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult

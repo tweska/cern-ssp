@@ -12,8 +12,8 @@ protected:
     f64 *d_histos;
     usize nBins;
 
-    f32 xMin;
-    f32 xMax;
+    f64 xMin;
+    f64 xMax;
 
     f32 *d_scales;
     f32 *d_resolutions;
@@ -30,7 +30,7 @@ public:
     GpuFWM() = delete;
     GpuFWM(
         usize nBins,
-        f32 xMin, f32 xMax,
+        f64 xMin, f64 xMax,
         f32 *scales, usize nScales,
         f32 *resolutions, usize nResolutions,
         Timer<> *rtSetup = nullptr,

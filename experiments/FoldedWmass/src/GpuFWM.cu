@@ -5,23 +5,6 @@
 #define ISOLATION_CRITICAL 0.5
 
 __device__
-inline void AddBinContent(f64 *histogram, const usize bin)
-{
-    atomicAdd(&histogram[bin], 1.0f);
-}
-
-__device__
-inline usize FindBin(const f64 x, const usize nBins, const f64 xMin, const f64 xMax)
-{
-    if (x < xMin)
-        return 0;
-    if (!(x < xMax))
-        return nBins - 1;
-
-    return 1 + static_cast<usize>((nBins - 2) * (x - xMin) / (xMax - xMin));
-}
-
-__device__
 inline f32 angle(
     const f32 x1, const f32 y1, const f32 z1,
     const f32 x2, const f32 y2, const f32 z2
@@ -31,13 +14,10 @@ inline f32 angle(
     const f32 cy = x1 * z2 - x2 * z1;
     const f32 cz = x1 * y2 - x2 * y1;
 
-    // norm of cross product
-    const f32 c = sqrt(cx * cx + cy * cy + cz * cz);
-
-    // dot product
-    const f32 d = x1 * x2 + y1 * y2 + z1 * z2;
-
-    return atan2(c, d);
+    return atan2(
+        sqrt(cx * cx + cy * cy + cz * cz),  // norm of cross product
+        x1 * x2 + y1 * y2 + z1 * z2         // dot product
+    );
 }
 
 __device__
@@ -62,8 +42,8 @@ inline f32 invariantMassPxPyPzM(
         return m2 >= 0 ? sqrt(m2) : sqrt(-m2);
     }
 
-    const f32 mm1 =  mass1 * mass1;
-    const f32 mm2 =  mass2 * mass2;
+    const f32 mm1 = mass1 * mass1;
+    const f32 mm2 = mass2 * mass2;
 
     const f32 r1 = mm1 / pp1;
     const f32 r2 = mm2 / pp2;
@@ -88,62 +68,19 @@ inline f32 invariantMassPxPyPzE(
    const f32 x1, const f32 y1, const f32 z1, const f32 e1,
    const f32 x2, const f32 y2, const f32 z2, const f32 e2
 ) {
-    const f32 pp1 = x1 * x1 + y1 * y1 + z1 * z1;
-    const f32 pp2 = x2 * x2 + y2 * y2 + z2 * z2;
-
-    const f32 mm1 = e1 * e1 - pp1;
-    const f32 mm2 = e2 * e2 - pp2;
-
-    const f32 mass1 = (mm1 >= 0) ? sqrt(mm1) : 0;
-    const f32 mass2 = (mm2 >= 0) ? sqrt(mm2) : 0;
-
-    return invariantMassPxPyPzM(x1, y1, z1, mass1, x2, y2, z2, mass2);
-}
-
-__device__
-inline f32 invariantMassPtEtaPhiE(
-    const f32 pt1, const f32 eta1, const f32 phi1, const f32 e1,
-    const f32 pt2, const f32 eta2, const f32 phi2, const f32 e2
-) {
-    const f32 x1 = pt1 * cos(phi1);
-    const f32 y1 = pt1 * sin(phi1);
-    const f32 z1 = pt1 * sinh(eta1);
-
-    const f32 x2 = pt2 * cos(phi2);
-    const f32 y2 = pt2 * sin(phi2);
-    const f32 z2 = pt2 * sinh(eta2);
-
-    return invariantMassPxPyPzE(x1, y1, z1, e1, x2, y2, z2, e2);
-}
-
-__device__
-inline f32 forwardFolding(
-    const f32 recoPt,
-    const f32 truePt,
-    const f32 s,
-    const f32 r
-) {
-    return s * recoPt + (recoPt - truePt) * (r - s);
-}
-
-__device__
-f32 foldedMass(
-    f32 recoPt1, const f32 recoEta1, const f32 recoPhi1, const f32 recoE1,
-    f32 recoPt2, const f32 recoEta2, const f32 recoPhi2, const f32 recoE2,
-    const f32 truePt1, const f32 truePt2,
-    const f32 scale, const f32 resolution
-) {
-    // Apply forward folding if both truePt values are valid.
-    if (truePt1 >= 0 && truePt2 >= 0) {
-        recoPt1 = forwardFolding(recoPt1, truePt1, scale, resolution);
-        recoPt2 = forwardFolding(recoPt2, truePt2, scale, resolution);
+    f32 mass1, mass2;
+    {
+        const f32 pp1 = x1 * x1 + y1 * y1 + z1 * z1;
+        const f32 mm1 = e1 * e1 - pp1;
+        mass1 = (mm1 >= 0) ? sqrt(mm1) : 0;
+    }
+    {
+        const f32 pp2 = x2 * x2 + y2 * y2 + z2 * z2;
+        const f32 mm2 = e2 * e2 - pp2;
+        mass2 = (mm2 >= 0) ? sqrt(mm2) : 0;
     }
 
-    // Return Invariant mass of sum.
-    return invariantMassPtEtaPhiE(
-        recoPt1, recoEta1, recoPhi1, recoE1,
-        recoPt2, recoEta2, recoPhi2, recoE2
-    ) / 1e3f;
+    return invariantMassPxPyPzM(x1, y1, z1, mass1, x2, y2, z2, mass2);
 }
 
 __global__
@@ -158,17 +95,35 @@ void FillKernel(
     const usize stride = blockDim.x * gridDim.x;
 
     for (usize k = tid; k < bulkSize; k += stride) {
-        const DefCoords cur = defCoords[k];
+        const DefCoords& dc = defCoords[k];
         for (usize i = 0; i < nScales; ++i) {
             for (usize j = 0; j < nResolutions; ++j) {
-                const f64 mass = foldedMass(
-                    cur.recoPt1, cur.recoEta1, cur.recoPhi1, cur.recoE1,
-                    cur.recoPt2, cur.recoEta2, cur.recoPhi2, cur.recoE2,
-                    cur.truePt1, cur.truePt2,
-                    scales[i], resolutions[j]
-                );
-                const usize bin = FindBin(mass, nBins, xMin, xMax);
-                AddBinContent(&histos[(i * nScales + j) * nBins], bin);
+                f32 recoPt1 = dc.recoPt1;
+                f32 recoPt2 = dc.recoPt2;
+
+                // Apply forward folding if both truePt values are valid.
+                if (dc.truePt1 >= 0 && dc.truePt2 >= 0) {
+                    recoPt1 = scales[i] * recoPt1 + (recoPt1 - dc.truePt1) * (resolutions[j] - scales[i]);
+                    recoPt2 = scales[i] * recoPt2 + (recoPt2 - dc.truePt2) * (resolutions[j] - scales[i]);
+                }
+
+                // Compute the invariant mass.
+                const f64 x = invariantMassPxPyPzE(
+                    recoPt1 * cos(dc.recoPhi1),
+                    recoPt1 * sin(dc.recoPhi1),
+                    recoPt1 * sinh(dc.recoEta1),
+                    dc.recoE1,
+                    recoPt2 * cos(dc.recoPhi2),
+                    recoPt2 * sin(dc.recoPhi2),
+                    recoPt2 * sinh(dc.recoEta2),
+                    dc.recoE2
+                ) / 1e3f;
+
+                // Fill the right bin.
+                usize bin = 1 + static_cast<usize>((nBins - 2) * (x - xMin) / (xMax - xMin));
+                if (x < xMin) bin = 0;
+                if (!(x < xMax)) bin = nBins - 1;
+                atomicAdd(&histos[(i * nScales + j) * nBins + bin], 1.0f);
             }
         }
     }
@@ -240,8 +195,8 @@ void GpuFWM<BlockSize, MaxBulkSize>::FillN(const usize n, const DefCoords *defCo
     if (rtTransfer) rtTransfer->pause();
 
     if (rtKernel) rtKernel->start();
-    usize numBlocks = n % BlockSize == 0 ? n / BlockSize : n / BlockSize + 1;
-    FillKernel<<<numBlocks, BlockSize>>>(
+    const usize nBlocks = n % BlockSize == 0 ? n / BlockSize : n / BlockSize + 1;
+    FillKernel<<<nBlocks, BlockSize>>>(
         d_histos, nBins,
         xMin, xMax,
         d_scales, nScales,
@@ -249,8 +204,8 @@ void GpuFWM<BlockSize, MaxBulkSize>::FillN(const usize n, const DefCoords *defCo
         d_defCoords, n
     );
     ERRCHECK(cudaDeviceSynchronize());
-    ERRCHECK(cudaPeekAtLastError());
     if (rtKernel) rtKernel->pause();
+    ERRCHECK(cudaPeekAtLastError());
 }
 
-template class GpuFWM<256, 32768>;
+template class GpuFWM<>;

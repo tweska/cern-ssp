@@ -6,7 +6,8 @@
 
 #include "coords.h"
 
-template <usize BlockSize = 256, usize MaxBulkSize = 32768>
+// template <usize BlockSize = 64, usize MaxBulkSize = 32768>
+template <usize BlockSize = 64, usize MaxBulkSize = 50000>
 class GpuFWM {
 protected:
     f64 *d_histos;

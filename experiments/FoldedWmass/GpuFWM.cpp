@@ -16,7 +16,7 @@
 #define NBINS 100
 #define XMIN 0
 #define XMAX 400
-#define INPUT_SIZE 2062
+#define INPUT_SIZE 100000
 #define BATCH_SIZE 32768
 #define RUNS 10
 

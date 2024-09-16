@@ -12,3 +12,6 @@ obj/
 .idea/
 .clang-format
 compile_commands.json
+
+*.sh
+*.txt

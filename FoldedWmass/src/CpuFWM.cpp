@@ -15,13 +15,10 @@ inline f32 angle(
     const f32 cy = x1 * z2 - x2 * z1;
     const f32 cz = x1 * y2 - x2 * y1;
 
-    // norm of cross product
-    const f32 c = std::sqrt(cx * cx + cy * cy + cz * cz);
-
-    // dot product
-    const f32 d = x1 * x2 + y1 * y2 + z1 * z2;
-
-    return std::atan2(c, d);
+    return std::atan2(
+        std::sqrt(cx * cx + cy * cy + cz * cz),  // norm of cross product
+        x1 * x2 + y1 * y2 + z1 * z2              // dot product
+    );
 }
 
 inline f32 invariantMassPxPyPzM(
@@ -70,40 +67,19 @@ inline f32 invariantMassPxPyPzE(
    const f32 x1, const f32 y1, const f32 z1, const f32 e1,
    const f32 x2, const f32 y2, const f32 z2, const f32 e2
 ) {
-    const f32 pp1 = x1 * x1 + y1 * y1 + z1 * z1;
-    const f32 pp2 = x2 * x2 + y2 * y2 + z2 * z2;
-
-    const f32 mm1 = e1 * e1 - pp1;
-    const f32 mm2 = e2 * e2 - pp2;
-
-    const f32 mass1 = (mm1 >= 0) ? std::sqrt(mm1) : 0;
-    const f32 mass2 = (mm2 >= 0) ? std::sqrt(mm2) : 0;
+    f32 mass1, mass2;
+    {
+        const f32 pp1 = x1 * x1 + y1 * y1 + z1 * z1;
+        const f32 mm1 = e1 * e1 - pp1;
+        mass1 = (mm1 >= 0) ? std::sqrt(mm1) : 0;
+    }
+    {
+        const f32 pp2 = x2 * x2 + y2 * y2 + z2 * z2;
+        const f32 mm2 = e2 * e2 - pp2;
+        mass2 = (mm2 >= 0) ? std::sqrt(mm2) : 0;
+    }
 
     return invariantMassPxPyPzM(x1, y1, z1, mass1, x2, y2, z2, mass2);
-}
-
-inline f32 invariantMassPtEtaPhiE(
-    const f32 pt1, const f32 eta1, const f32 phi1, const f32 e1,
-    const f32 pt2, const f32 eta2, const f32 phi2, const f32 e2
-) {
-    const f32 x1 = pt1 * std::cos(phi1);
-    const f32 y1 = pt1 * std::sin(phi1);
-    const f32 z1 = pt1 * std::sinh(eta1);
-
-    const f32 x2 = pt2 * std::cos(phi2);
-    const f32 y2 = pt2 * std::sin(phi2);
-    const f32 z2 = pt2 * std::sinh(eta2);
-
-    return invariantMassPxPyPzE(x1, y1, z1, e1, x2, y2, z2, e2);
-}
-
-inline f32 forwardFolding(
-    const f32 recoPt,
-    const f32 truePt,
-    const f32 s,
-    const f32 r
-) {
-    return s * recoPt + (recoPt - truePt) * (r - s);
 }
 
 #ifdef UNSTABLE_INVARIANT_MASS
@@ -135,14 +111,20 @@ f32 foldedMass(
 ) {
     // Apply forward folding if both truePt values are valid.
     if (truePt1 >= 0 && truePt2 >= 0) {
-        recoPt1 = forwardFolding(recoPt1, truePt1, scale, resolution);
-        recoPt2 = forwardFolding(recoPt2, truePt2, scale, resolution);
+        recoPt1 = scale * recoPt1 + (recoPt1 - truePt1) * (resolution - scale);
+        recoPt2 = scale * recoPt2 + (recoPt2 - truePt2) * (resolution - scale);
     }
 
-    // Return Invariant mass of sum.
-    return invariantMassPtEtaPhiE(
-        recoPt1, recoEta1, recoPhi1, recoE1,
-        recoPt2, recoEta2, recoPhi2, recoE2
+    // Compute and return the invariant mass.
+    return invariantMassPxPyPzE(
+        recoPt1 * std::cos(recoPhi1),
+        recoPt1 * std::sin(recoPhi1),
+        recoPt1 * std::sinh(recoEta1),
+        recoE1,
+        recoPt2 * std::cos(recoPhi2),
+        recoPt2 * std::sin(recoPhi2),
+        recoPt2 * std::sinh(recoEta2),
+        recoE2
     ) / 1e3f;
 }
 #endif

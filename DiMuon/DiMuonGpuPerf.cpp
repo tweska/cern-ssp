@@ -13,7 +13,7 @@
 
 #define BINS 30000
 #define BATCH_SIZE 32768
-#define RUNS 3
+#define RUNS 10
 
 void DiMuonGpu(Timer<> *rtTransfer, Timer<> *rtFill, Timer<> *rtResult) {
     TFile file("data/Run2012BC_DoubleMuParked_Muons.root");

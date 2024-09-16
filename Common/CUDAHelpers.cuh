@@ -45,26 +45,6 @@ namespace ROOT {
 namespace Experimental {
 namespace CUDAHelpers {
 
-// Dynamic shared memory needs to be declared as "extern" in CUDA. Having templated kernels with shared memory
-// of different data types results in a redeclaration error if the name of the array is the same, so we use a
-// proxy function to initialize shared memory arrays of different types with different names.
-
-template <typename T>
-inline __device__ T *shared_memory_proxy()
-{
-   // Fatal("template <typename T> __device__ T *shared_memory_proxy()", "Unsupported shared memory type");
-   return (T *)0;
-};
-template <>
-inline __device__ double *shared_memory_proxy<double>()
-{
-   extern __shared__ double s_double[];
-   return s_double;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// CUDA Kernels
-
 // CUDA version of TMath::BinarySearch
 template <typename T>
 inline __device__ long BinarySearch(long n, const T *array, T value)

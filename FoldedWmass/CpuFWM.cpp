@@ -14,6 +14,7 @@
 #define XMIN 0
 #define XMAX 400
 #define THREADS 16
+// #define INPUT_SIZE 2062
 #define INPUT_SIZE 100000
 #define BATCH_SIZE (256 * THREADS)
 #define RUNS 10

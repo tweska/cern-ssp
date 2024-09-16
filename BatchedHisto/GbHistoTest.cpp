@@ -296,3 +296,8 @@ TEST(GbHistoDTest, FillOverflow) {
     );
     ASSERT_TRUE(histos.FullRandomTest(500, true, 256));
 }
+
+int main(int argc, char **argv) {
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

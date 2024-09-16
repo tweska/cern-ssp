@@ -14,7 +14,7 @@
 #define BINS 30000
 #define THREADS 16
 #define BATCH_SIZE (2048 * THREADS)
-#define RUNS 3
+#define RUNS 10
 
 void bulkThread(const f64 *coords, TH1D *histo, const usize n, const usize tid) {
     const usize start = BATCH_SIZE / THREADS * tid;

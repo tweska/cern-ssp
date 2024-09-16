@@ -11,6 +11,11 @@ CUDA_LIBS     = -lcuda -lcudart
 
 TARGETS       = bin/CpuFWMOriginal bin/CpuFWM bin/GpuFWM
 
+ifdef UNSTABLE_INVARIANT_MASS
+	CPP_FLAGS += -DUNSTABLE_INVARIANT_MASS
+	CUDA_FLAGS += -DUNSTABLE_INVARIANT_MASS
+endif
+
 all: $(TARGETS)
 
 obj/%.cpp.o: src/%.cpp

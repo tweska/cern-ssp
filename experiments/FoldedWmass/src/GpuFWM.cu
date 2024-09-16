@@ -83,6 +83,55 @@ inline f32 invariantMassPxPyPzE(
     return invariantMassPxPyPzM(x1, y1, z1, mass1, x2, y2, z2, mass2);
 }
 
+#ifdef UNSTABLE_INVARIANT_MASS
+__device__
+f32 foldedMass(
+    f32 recoPt1, const f32 recoEta1, const f32 recoPhi1, const f32 recoE1,
+    f32 recoPt2, const f32 recoEta2, const f32 recoPhi2, const f32 recoE2,
+    const f32 truePt1, const f32 truePt2,
+    const f32 scale, const f32 resolution
+) {
+    // Apply forward folding if both truePt values are valid.
+    if (truePt1 >= 0 && truePt2 >= 0) {
+        recoPt1 = scale * recoPt1 + (recoPt1 - truePt1) * (resolution - scale);
+        recoPt2 = scale * recoPt2 + (recoPt2 - truePt2) * (resolution - scale);
+    }
+
+    // Compute and return the invariant mass.
+    const f32 xSum = recoPt1 * cos(recoPhi1) + recoPt2 * cos(recoPhi2);
+    const f32 ySum = recoPt1 * sin(recoPhi1) + recoPt2 * sin(recoPhi2);
+    const f32 zSum = recoPt1 * sinh(recoEta1) + recoPt2 * sinh(recoEta2);
+    const f32 eSum = recoE1 + recoE2;
+    return sqrt(eSum * eSum - xSum * xSum - ySum * ySum - zSum * zSum) / 1e3f;
+}
+#else
+__device__
+f32 foldedMass(
+    f32 recoPt1, const f32 recoEta1, const f32 recoPhi1, const f32 recoE1,
+    f32 recoPt2, const f32 recoEta2, const f32 recoPhi2, const f32 recoE2,
+    const f32 truePt1, const f32 truePt2,
+    const f32 scale, const f32 resolution
+) {
+    // Apply forward folding if both truePt values are valid.
+    if (truePt1 >= 0 && truePt2 >= 0) {
+        recoPt1 = scale * recoPt1 + (recoPt1 - truePt1) * (resolution - scale);
+        recoPt2 = scale * recoPt2 + (recoPt2 - truePt2) * (resolution - scale);
+    }
+
+    // Compute and return the invariant mass.
+    return invariantMassPxPyPzE(
+        recoPt1 * cos(recoPhi1),
+        recoPt1 * sin(recoPhi1),
+        recoPt1 * sinh(recoEta1),
+        recoE1,
+        recoPt2 * cos(recoPhi2),
+        recoPt2 * sin(recoPhi2),
+        recoPt2 * sinh(recoEta2),
+        recoE2
+    ) / 1e3f;
+}
+#endif
+
 __global__
 void FillKernel(
     f64 *histos, const usize nBins,
@@ -98,26 +147,13 @@ void FillKernel(
         const DefCoords& dc = defCoords[k];
         for (usize i = 0; i < nScales; ++i) {
             for (usize j = 0; j < nResolutions; ++j) {
-                f32 recoPt1 = dc.recoPt1;
-                f32 recoPt2 = dc.recoPt2;
-
-                // Apply forward folding if both truePt values are valid.
-                if (dc.truePt1 >= 0 && dc.truePt2 >= 0) {
-                    recoPt1 = scales[i] * recoPt1 + (recoPt1 - dc.truePt1) * (resolutions[j] - scales[i]);
-                    recoPt2 = scales[i] * recoPt2 + (recoPt2 - dc.truePt2) * (resolutions[j] - scales[i]);
-                }
-
-                // Compute the invariant mass.
-                const f64 x = invariantMassPxPyPzE(
-                    recoPt1 * cos(dc.recoPhi1),
-                    recoPt1 * sin(dc.recoPhi1),
-                    recoPt1 * sinh(dc.recoEta1),
-                    dc.recoE1,
-                    recoPt2 * cos(dc.recoPhi2),
-                    recoPt2 * sin(dc.recoPhi2),
-                    recoPt2 * sinh(dc.recoEta2),
-                    dc.recoE2
-                ) / 1e3f;
+                // Calculate the invariant mass after folding.
+                const f64 x = foldedMass(
+                    dc.recoPt1, dc.recoEta1, dc.recoPhi1, dc.recoE1,
+                    dc.recoPt2, dc.recoEta2, dc.recoPhi2, dc.recoE2,
+                    dc.truePt1, dc.truePt2,
+                    scales[i], resolutions[j]
+                );
 
                 // Fill the right bin.
                 usize bin = 1 + static_cast<usize>((nBins - 2) * (x - xMin) / (xMax - xMin));

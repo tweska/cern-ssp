@@ -106,6 +106,27 @@ inline f32 forwardFolding(
     return s * recoPt + (recoPt - truePt) * (r - s);
 }
 
+#ifdef UNSTABLE_INVARIANT_MASS
+f32 foldedMass(
+    f32 recoPt1, const f32 recoEta1, const f32 recoPhi1, const f32 recoE1,
+    f32 recoPt2, const f32 recoEta2, const f32 recoPhi2, const f32 recoE2,
+    const f32 truePt1, const f32 truePt2,
+    const f32 scale, const f32 resolution
+) {
+    // Apply forward folding if both truePt values are valid.
+    if (truePt1 >= 0 && truePt2 >= 0) {
+        recoPt1 = scale * recoPt1 + (recoPt1 - truePt1) * (resolution - scale);
+        recoPt2 = scale * recoPt2 + (recoPt2 - truePt2) * (resolution - scale);
+    }
+
+    // Compute and return the invariant mass.
+    const f32 xSum = recoPt1 * std::cos(recoPhi1) + recoPt2 * std::cos(recoPhi2);
+    const f32 ySum = recoPt1 * std::sin(recoPhi1) + recoPt2 * std::sin(recoPhi2);
+    const f32 zSum = recoPt1 * std::sinh(recoEta1) + recoPt2 * std::sinh(recoEta2);
+    const f32 eSum = recoE1 + recoE2;
+    return std::sqrt(eSum * eSum - xSum * xSum - ySum * ySum - zSum * zSum) / 1e3f;
+}
+#else
 f32 foldedMass(
     f32 recoPt1, const f32 recoEta1, const f32 recoPhi1, const f32 recoE1,
     f32 recoPt2, const f32 recoEta2, const f32 recoPhi2, const f32 recoE2,
@@ -124,3 +145,4 @@ f32 foldedMass(
         recoPt2, recoEta2, recoPhi2, recoE2
     ) / 1e3f;
 }
+#endif

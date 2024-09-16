@@ -57,9 +57,11 @@ i32 main(i32 argc, c8 *argv[])
 {
     b8 warmupFlag = false;
     b8 printFlag = false;
-    for (i32 i = 0; i < argc; ++i) {
+    usize runs = RUNS;
+    for (i32 i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--warmup") == 0) { warmupFlag = true; }
-        if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
+        else if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
+        else { runs = atol(argv[i]); }
     }
 
     DefCoords *defCoords = new DefCoords[INPUT_SIZE];
@@ -69,19 +71,24 @@ i32 main(i32 argc, c8 *argv[])
         FoldedWmass(defCoords, nullptr, nullptr, nullptr, printFlag);
     }
 
-    Timer<> rtsTransfer[RUNS], rtsKernel[RUNS], rtsResult[RUNS];
-    for (auto i = 0; i < RUNS; ++i) {
+    if (runs < 1) {
+        delete[] defCoords;
+        return 0;
+    }
+
+    Timer<> rtsTransfer[runs], rtsKernel[runs], rtsResult[runs];
+    for (usize i = 0; i < runs; ++i) {
         FoldedWmass(defCoords, &rtsTransfer[i], &rtsKernel[i], &rtsResult[i]);
     }
-    std::cerr << "Transfer      "; printTimerMinMaxAvg(rtsTransfer, RUNS);
-    std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsKernel, RUNS);
-    std::cerr << "Result        "; printTimerMinMaxAvg(rtsResult, RUNS);
+    std::cerr << "Transfer      "; printTimerMinMaxAvg(rtsTransfer, runs);
+    std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsKernel, runs);
+    std::cerr << "Result        "; printTimerMinMaxAvg(rtsResult, runs);
 
-    Timer<> rtsTotal[RUNS];
-    for (auto i = 0; i < RUNS; ++i) {
+    Timer<> rtsTotal[runs];
+    for (usize i = 0; i < runs; ++i) {
         rtsTotal[i] = rtsTransfer[i] + rtsKernel[i] + rtsResult[i];
     }
-    std::cerr << "Total         "; printTimerMinMaxAvg(rtsTotal, RUNS);
+    std::cerr << "Total         "; printTimerMinMaxAvg(rtsTotal, runs);
 
     delete[] defCoords;
     return 0;

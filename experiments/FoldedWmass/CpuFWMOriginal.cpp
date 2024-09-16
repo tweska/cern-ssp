@@ -126,7 +126,7 @@ void FoldedWmass(b8 print = false)
 i32 main(i32 argc, c8 *argv[])
 {
     b8 printFlag = false;
-    for (i32 i = 0; i < argc; ++i) {
+    for (i32 i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
     }
 

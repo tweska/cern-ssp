@@ -119,9 +119,11 @@ i32 main(i32 argc, c8 *argv[])
 
     b8 warmupFlag = false;
     b8 printFlag = false;
-    for (i32 i = 0; i < argc; ++i) {
+    usize runs = RUNS;
+    for (i32 i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--warmup") == 0) { warmupFlag = true; }
-        if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
+        else if (strcmp(argv[i], "--print") == 0) { printFlag = true; }
+        else { runs = atol(argv[i]); }
     }
 
     DefCoords *defCoords = new DefCoords[INPUT_SIZE];
@@ -131,11 +133,16 @@ i32 main(i32 argc, c8 *argv[])
         FoldedWmass(defCoords, nullptr, printFlag);
     }
 
-    Timer<> timer[RUNS];
-    for (auto i = 0; i < RUNS; ++i) {
+    if (runs < 1) {
+        delete[] defCoords;
+        return 0;
+    }
+
+    Timer<> timer[runs];
+    for (usize i = 0; i < runs; ++i) {
         FoldedWmass(defCoords, &timer[i]);
     }
-    std::cerr << "Define + Fill "; printTimerMinMaxAvg(timer, RUNS);
+    std::cerr << "Define + Fill "; printTimerMinMaxAvg(timer, runs);
 
     delete[] defCoords;
     return 0;

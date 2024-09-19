@@ -86,11 +86,23 @@ void DiMuonGpu(Timer<> *rtTransfer, Timer<> *rtFill, Timer<> *rtResult) {
 int main()
 {
     Timer<> rtsTransfer[RUNS], rtsFill[RUNS], rtsResult[RUNS];
+
+    // Warmup...
+    DiMuonGpu(nullptr, nullptr, nullptr);
+
     for (usize i = 0; i < RUNS; ++i)
         DiMuonGpu(&rtsTransfer[i], &rtsFill[i], &rtsResult[i]);
+
+    // Print timing results
     std::cerr << "Transfer      "; printTimerMinMaxAvg(rtsTransfer, RUNS);
     std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsFill, RUNS);
     std::cerr << "Result        "; printTimerMinMaxAvg(rtsResult, RUNS);
+
+    Timer<> rtsTotal[RUNS];
+    for (usize i = 0; i < RUNS; ++i) {
+        rtsTotal[i] = rtsTransfer[i] + rtsFill[i] + rtsResult[i];
+    }
+    std::cerr << "Total         "; printTimerMinMaxAvg(rtsTotal, RUNS);
 
     return 0;
 }

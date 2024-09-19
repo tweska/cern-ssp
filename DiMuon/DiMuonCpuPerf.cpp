@@ -43,7 +43,7 @@ void processBulk(f64 *coords, std::vector<TH1D*> histos, usize n) {
     }
 }
 
-void DiMuonCpu(Timer<> &rtCombined) {
+void DiMuonCpu(Timer<> *timer) {
     TFile file("data/Run2012BC_DoubleMuParked_Muons.root");
     auto tree = dynamic_cast<TTree *>(file.Get("Events"));
     std::vector<TH1D*> histos;
@@ -101,18 +101,18 @@ void DiMuonCpu(Timer<> &rtCombined) {
         coords[offset++] = mass[1];
 
         if (offset == 8 * BATCH_SIZE) {
-            rtCombined.start();
+            if (timer) timer->start();
             processBulk(coords, histos, BATCH_SIZE);
-            rtCombined.pause();
+            if (timer) timer->pause();
             offset = 0;
         }
     }
 
     // Process the last batch
     if (offset != 0) {
-        rtCombined.start();
+        if (timer) timer->start();
         processBulk(coords, histos, offset / 8);
-        rtCombined.pause();
+        if (timer) timer->pause();
     }
 
     TH1D mergedHisto(
@@ -121,7 +121,9 @@ void DiMuonCpu(Timer<> &rtCombined) {
         BINS, 0.25, 300
     );
     for (const auto &histo : histos) {
+        if (timer) timer->start();
         mergedHisto.Add(histo);
+        if (timer) timer->pause();
     }
 
     f64 *results = mergedHisto.GetArray();
@@ -132,9 +134,12 @@ void DiMuonCpu(Timer<> &rtCombined) {
 
 int main()
 {
+    // Warmup...
+    DiMuonCpu(nullptr);
+
     Timer<> rtsCombined[RUNS];
     for (usize i = 0; i < RUNS; ++i)
-        DiMuonCpu(rtsCombined[i]);
+        DiMuonCpu(&rtsCombined[i]);
     std::cerr << "Define + Fill "; printTimerMinMaxAvg(rtsCombined, RUNS);
 
     return 0;

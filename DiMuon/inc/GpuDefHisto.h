@@ -31,7 +31,9 @@ public:
         usize nBins,
         f64 xMin, f64 xMax,
         usize bulkDims, usize maxBulkSize,
-        Timer<> *timerTransfer, Timer<> *timerFill, Timer<> *timerResult
+        Timer<> *timerTransfer = nullptr,
+        Timer<> *timerFill = nullptr,
+        Timer<> *timerResult = nullptr
     );
     GpuDefHisto(
         usize nBins,

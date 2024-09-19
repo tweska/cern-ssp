@@ -1,9 +1,11 @@
 #ifndef GBHISTO_H
 #define GBHISTO_H
 
+#include <iostream>
 #include <vector>
 
 #include "types.h"
+#include "timer.h"
 
 using namespace std;
 
@@ -41,10 +43,10 @@ protected:
 
     usize    maxBulkSize;        ///< Maximum size of bulk to process at once
 
-    f64 runtimeInit     = 0.0;
-    f64 runtimeTransfer = 0.0;
-    f64 runtimeKernel   = 0.0;
-    f64 runtimeResult   = 0.0;
+    Timer<> *rtInit;
+    Timer<> *rtTransfer;
+    Timer<> *rtKernel;
+    Timer<> *rtResult;
 
 public:
     GbHisto() = delete;
@@ -52,19 +54,28 @@ public:
         usize nHistos, const usize *nDims, const usize *nBinsAxis,
         const f64 *xMin, const f64 *xMax,
         const f64 *binEdges, const isize *binEdgesOffset,
-        usize maxBulkSize=256
+        usize maxBulkSize=256,
+        Timer<> *rtInit = nullptr,
+        Timer<> *rtTransfer = nullptr,
+        Timer<> *rtKernel = nullptr,
+        Timer<> *rtResult = nullptr
     );
     GbHisto(
         usize nHistos, const vector<usize> &nDims, const vector<usize> &nBinsAxis,
         const vector<f64> &xMin, const vector<f64> &xMax,
         const vector<f64> &binEdges, const vector<isize> &binEdgesOffset,
-        usize maxBulkSize=256
+        usize maxBulkSize=256,
+        Timer<> *rtInit = nullptr,
+        Timer<> *rtTransfer = nullptr,
+        Timer<> *rtKernel = nullptr,
+        Timer<> *rtResult = nullptr
     ) {
         GbHisto(
             nHistos, nDims.data(), nBinsAxis.data(),
             xMin.data(), xMax.data(),
             binEdges.data(), binEdgesOffset.data(),
-            maxBulkSize
+            maxBulkSize,
+            rtInit, rtTransfer, rtKernel, rtResult
         );
     }
     ~GbHisto();
@@ -73,8 +84,6 @@ public:
     GbHisto &operator=(const GbHisto &) = delete;
 
     void RetrieveResults(T *histogram, f64 *stats = nullptr);
-    void GetRuntime(f64 *runtimeInit, f64 *runtimeTransfer, f64 *runtimeKernel, f64 *runtimeResult);
-    void PrintRuntime(std::ostream &output = std::cout);
     void FillN(usize n, const f64 *coords, const f64 *weights = nullptr);
 };
 

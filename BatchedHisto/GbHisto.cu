@@ -82,9 +82,10 @@ GbHisto<T, BlockSize>::GbHisto(
     usize nHistos, const usize *nDims, const usize *nBinsAxis,
     const f64 *xMin, const f64 *xMax,
     const f64 *binEdges, const isize *binEdgesOffset,
-    usize maxBulkSize
+    usize maxBulkSize,
+    Timer<> *rtInit, Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult
 ) {
-    auto t0 = high_resolution_clock::now();
+    if (rtInit) rtInit->start();
 
     this->nHistos = nHistos;
     this->maxBulkSize = maxBulkSize;
@@ -135,9 +136,11 @@ GbHisto<T, BlockSize>::GbHisto(
     ERRCHECK(cudaMemcpy(d_binEdgesOffset, binEdgesOffset, sizeof(isize) * nAxis, cudaMemcpyHostToDevice));
     cudaDeviceSynchronize();
 
-    auto t1 = high_resolution_clock::now();
-    duration<f64, std::milli> runtimeMs = t1 - t0;
-    runtimeInit = runtimeMs.count();
+    if (rtInit) rtInit->pause();
+    this->rtInit = rtInit;
+    this->rtTransfer = rtTransfer;
+    this->rtKernel = rtKernel;
+    this->rtResult = rtResult;
 }
 
 template<typename T, usize BlockSize>
@@ -160,32 +163,12 @@ GbHisto<T, BlockSize>::~GbHisto() {
 
 template <typename T, usize BlockSize>
 void GbHisto<T, BlockSize>::RetrieveResults(T *histograms, f64 *stats) {
-    auto t0 = high_resolution_clock::now();
+    if (rtResult) rtResult->start();
 
     ERRCHECK(cudaMemcpy(histograms, d_histograms, sizeof(T) * nBins, cudaMemcpyDeviceToHost));
     ERRCHECK(cudaDeviceSynchronize());
 
-    auto t1 = high_resolution_clock::now();
-    duration<f64, std::milli> runtimeMs = t1 - t0;
-    runtimeResult = runtimeMs.count();
-}
-
-template <typename T, usize BlockSize>
-void GbHisto<T, BlockSize>::GetRuntime(f64 *runtimeInit, f64 *runtimeTransfer, f64 *runtimeKernel, f64 *runtimeResult) {
-    *runtimeInit = this->runtimeInit;
-    *runtimeTransfer = this->runtimeTransfer;
-    *runtimeKernel = this->runtimeKernel;
-    *runtimeResult = this->runtimeResult;
-}
-
-template <typename T, usize BlockSize>
-void GbHisto<T, BlockSize>::PrintRuntime(std::ostream &output) {
-    output << "runtimeInit     = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeInit << std::endl;
-    output << "runtimeTransfer = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeTransfer << std::endl;
-    output << "runtimeKernel   = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeKernel << std::endl;
-    output << "runtimeResult   = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeResult << std::endl;
-    output << "runtimeFill     = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeTransfer + runtimeKernel << "  (coords + kernel)" << std::endl;
-    output << "runtimeTotal    = " << std::setw(10) << std::fixed << std::setprecision(5) << runtimeInit + runtimeTransfer + runtimeKernel + runtimeResult << "  (init + coords + kernel + result)" << std::endl;
+    if (rtResult) rtResult->pause();
 }
 
 template<typename T, usize BlockSize>
@@ -199,7 +182,7 @@ void GbHisto<T, BlockSize>::FillN(usize n, const f64 *coords, const f64 *weights
         return;
     }
 
-    auto t0 = high_resolution_clock::now();
+    if (rtTransfer) rtTransfer->start();
 
     ERRCHECK(cudaMemcpy(d_coords, coords, sizeof(f64) * nAxis * n, cudaMemcpyHostToDevice));
 
@@ -209,7 +192,8 @@ void GbHisto<T, BlockSize>::FillN(usize n, const f64 *coords, const f64 *weights
         weightsPtr = d_weights;
     }
 
-    auto t1 = high_resolution_clock::now();
+    if (rtTransfer) rtTransfer->pause();
+    if (rtKernel) rtKernel->start();
 
     usize nThreads = nHistos * n;
     usize nBlocks = nThreads / BlockSize + (nThreads % BlockSize != 0);
@@ -222,11 +206,7 @@ void GbHisto<T, BlockSize>::FillN(usize n, const f64 *coords, const f64 *weights
     );
     ERRCHECK(cudaPeekAtLastError());
 
-    auto t2 = high_resolution_clock::now();
-    duration<f64, std::milli> runtimeMsCoords = t1 - t0;
-    duration<f64, std::milli> runtimeMsKernel = t2 - t1;
-    runtimeTransfer += runtimeMsCoords.count();
-    runtimeKernel += runtimeMsKernel.count();
+    if (rtKernel) rtKernel->pause();
 }
 
 

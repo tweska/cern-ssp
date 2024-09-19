@@ -15,3 +15,7 @@ compile_commands.json
 
 *.sh
 *.txt
+
+perf.data
+perf.data.old
+*.svg:

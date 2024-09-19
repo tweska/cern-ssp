@@ -13,7 +13,7 @@ CUDA_LIBS       = -lcuda -lcudart
 
 TEST_LIBS       = -lgtest -lgtest_main
 
-TARGET          = bin/GbHistoTest
+TARGET          = bin/GbHistoTest bin/CpuPerf bin/GpuPerf
 
 all: $(TARGET)
 
@@ -28,6 +28,14 @@ obj/%.cu.o: %.cu
 bin/GbHistoTest: obj/GbHisto.cu.o obj/GbHistoTest.cpp.o
 	@ mkdir -p bin
 	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS) $(TEST_LIBS)
+
+bin/CpuPerf: obj/CpuPerf.cpp.o
+	@ mkdir -p bin
+	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS)
+
+bin/GpuPerf: obj/GpuPerf.cpp.o obj/GbHisto.cu.o
+	@ mkdir -p bin
+	$(CPP_COMPILER) -o $@ $^ $(CPP_FLAGS) $(CPP_LIBS) $(CUDA_LIBS)
 
 clean:
 	rm -rf bin/ obj/

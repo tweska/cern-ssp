@@ -17,7 +17,8 @@ void getCoords(DefCoords *coords, usize n) {
     chainReco->AddFriend(chainTruth);
 
     auto df = ROOT::RDataFrame(*chainReco).Filter(
-        "TtbarLjets_spanet_up_index_NOSYS >= 0 && TtbarLjets_spanet_down_index_NOSYS >= 0"
+        [](const i32 upIndex, i32 const downIndex) { return upIndex >= 0 && downIndex >= 0; },
+        {"TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS"}
     );
 
     auto truePt = [](

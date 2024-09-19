@@ -4,11 +4,11 @@ ROOT_FLAGS    = $(shell root-config --cflags)
 ROOT_LIBS     = $(shell root-config --libs)
 
 CPP_COMPILER  = g++
-CPP_FLAGS     = -O3 -g -Wall -Werror -Iinc -I../Common $(ROOT_FLAGS)
+CPP_FLAGS     = -O3 -Wall -Werror -Iinc -I../Common $(ROOT_FLAGS)
 CPP_LIBS      = $(ROOT_LIBS)
 
 CUDA_COMPILER = nvcc
-CUDA_FLAGS    = -O3 -arch=sm_75 -g -G -Iinc -I../Common
+CUDA_FLAGS    = -O3 -arch=sm_75 -Iinc -I../Common
 CUDA_LIBS     = -lcuda -lcudart
 
 TARGETS       = bin/CpuFWMOriginal bin/CpuFWM bin/GpuFWM

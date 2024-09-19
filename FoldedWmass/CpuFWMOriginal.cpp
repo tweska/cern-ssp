@@ -2,7 +2,6 @@
 
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDFHelpers.hxx>
-#include <TTreePerfStats.h>
 
 #include "types.h"
 #include "util.h"
@@ -16,8 +15,6 @@
 
 void FoldedWmass(b8 print = false)
 {
-    ROOT::EnableImplicitMT();
-
     TChain* chainReco = new TChain("reco");
     TChain* chainTruth = new TChain("particleLevel");
 
@@ -27,7 +24,8 @@ void FoldedWmass(b8 print = false)
     chainReco->AddFriend(chainTruth);
 
     auto df = ROOT::RDataFrame(*chainReco).Filter(
-        "TtbarLjets_spanet_up_index_NOSYS >= 0 && TtbarLjets_spanet_down_index_NOSYS >= 0"
+        [](const i32 upIndex, i32 const downIndex) { return upIndex >= 0 && downIndex >= 0; },
+        {"TtbarLjets_spanet_up_index_NOSYS", "TtbarLjets_spanet_down_index_NOSYS"}
     );
 
     auto truePt = [](
@@ -108,7 +106,7 @@ void FoldedWmass(b8 print = false)
                     "truePt1", "truePt2"
                 }
             );
-            histos.emplace_back(newNode.Histo1D({name.c_str(), "", NBINS, XMIN, XMAX}, name));
+            histos.emplace_back(newNode.Histo1D<f64>({name.c_str(), "", NBINS, XMIN, XMAX}, name));
         }
     }
     RunGraphs(histos);
@@ -125,6 +123,8 @@ void FoldedWmass(b8 print = false)
 
 i32 main(i32 argc, c8 *argv[])
 {
+    TH1::AddDirectory(false);
+
     b8 printFlag = false;
     for (i32 i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--print") == 0) { printFlag = true; }

@@ -13,9 +13,8 @@ obj/
 .clang-format
 compile_commands.json
 
-*.sh
 *.txt
 
 perf.data
 perf.data.old
-*.svg:
+*.svg

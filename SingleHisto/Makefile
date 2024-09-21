@@ -1,19 +1,19 @@
 .PHONY: all clean
 
-ROOT_FLAGS      = $(shell root-config --cflags)
-ROOT_LIBS       = $(shell root-config --libs)
+ROOT_FLAGS    = $(shell root-config --cflags)
+ROOT_LIBS     = $(shell root-config --libs)
 
-CPP_COMPILER    = g++
-CPP_FLAGS       = -O3 -g -Wall -Werror -I../Common $(ROOT_FLAGS)
-CPP_LIBS        = $(ROOT_LIBS)
+CPP_COMPILER  = g++
+CPP_FLAGS     = -O3 -Wall -Werror -I../Common $(ROOT_FLAGS)
+CPP_LIBS      = $(ROOT_LIBS)
 
-CUDA_COMPILER   = nvcc
-CUDA_FLAGS      = -arch=sm_75 -g -G -I../Common
-CUDA_LIBS       = -lcuda -lcudart
+CUDA_COMPILER = nvcc
+CUDA_FLAGS    = -arch=sm_75 -I../Common
+CUDA_LIBS     = -lcuda -lcudart
 
-TEST_LIBS       = -lgtest -lgtest_main
+TEST_LIBS     = -lgtest -lgtest_main
 
-TARGET          = bin/GHistoTest
+TARGET        = bin/GHistoTest
 
 all: $(TARGET)
 

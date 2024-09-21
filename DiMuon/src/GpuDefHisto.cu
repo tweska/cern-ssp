@@ -88,18 +88,6 @@ GpuDefHisto<T, op, BlockSize>::GpuDefHisto(
 }
 
 template<typename T, Op *op, usize BlockSize>
-GpuDefHisto<T, op, BlockSize>::GpuDefHisto(
-    usize nBins,
-    f64 xMin, f64 xMax,
-    usize bulkDims, usize maxBulkSize
-    ) : GpuDefHisto(
-        nBins,
-        xMin, xMax,
-        bulkDims, maxBulkSize,
-        nullptr, nullptr, nullptr
-    ) {}
-
-template<typename T, Op *op, usize BlockSize>
 GpuDefHisto<T, op, BlockSize>::~GpuDefHisto()
 {
     ERRCHECK(cudaFree(d_histogram));

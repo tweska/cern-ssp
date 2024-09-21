@@ -35,11 +35,6 @@ public:
         Timer<> *timerFill = nullptr,
         Timer<> *timerResult = nullptr
     );
-    GpuDefHisto(
-        usize nBins,
-        f64 xMin, f64 xMax,
-        usize bulkDims, usize maxBulkSize = 256
-    );
     ~GpuDefHisto();
 
     GpuDefHisto(const GpuDefHisto &) = delete;

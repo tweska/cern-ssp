@@ -23,7 +23,7 @@ int main()
     TFile file("data/Run2012BC_DoubleMuParked_Muons.root");
     auto tree = dynamic_cast<TTree *>(file.Get("Events"));
     auto gpuHisto = GpuInvariantMassHisto(
-        BINS + 2, 0.25, 300, 8, BATCH_SIZE
+        BINS + 2, 0.25, 300.0, 8.0, BATCH_SIZE
     );
     auto coords = new f64[8 * BATCH_SIZE];
     auto *gpuResults = new f64[BINS + 2];

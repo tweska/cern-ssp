@@ -18,7 +18,7 @@
 #define XMAX 400
 // #define INPUT_SIZE 2062
 #define INPUT_SIZE 100000
-#define BATCH_SIZE 32768
+#define BATCH_SIZE 131072
 #define RUNS 10
 
 void FoldedWmass(DefCoords *defCoords, Timer<> *rtTransfer, Timer<> *rtKernel, Timer<> *rtResult, b8 print = false)

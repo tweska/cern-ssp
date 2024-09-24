@@ -15,6 +15,9 @@ The following results are obtained on a machine with an `AMD Ryzen 7 5700g`
 processor and `NVIDIA GeForce RTX 3060` GPU, by running the
 `./runBenchmarks.sh` script in the root directory.
 
+Note that some runtimes might not add up to the total time reported. This is
+due to the intermediate times being rounded.
+
 ### Batched Histogram
 |            | CPU Runtime | GPU Runtime | GPU Percentage | Speedup |
 |:----------:|------------:|------------:|---------------:|--------:|
@@ -34,7 +37,7 @@ processor and `NVIDIA GeForce RTX 3060` GPU, by running the
 ### FoldedWMass
 |               | CPU Runtime | GPU Runtime | GPU Percentage | Speedup |
 |:-------------:|------------:|------------:|---------------:|--------:|
-|   Transfer    |         N/A |         0ms |           0.5% |     N/A |
-| Define + Fill |     17792ms |       212ms |          99.5% |   83.9x |
-|    Result     |         N/A |         1ms |           0.5% |     N/A |
-|     Total     |     17792ms |       213ms |         100.0% |   83.5x |
+|   Transfer    |         N/A |         0ms |           0.0% |     N/A |
+| Define + Fill |     17792ms |       172ms |          98.9% |  103.4x |
+|    Result     |         N/A |         1ms |           0.6% |     N/A |
+|     Total     |     17792ms |       174ms |         100.0% |  102.3x |
